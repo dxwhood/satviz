@@ -7,7 +7,8 @@ import json
 load_dotenv()
 
 # Set up session
-session = requests.Session()
+session = requests.Session() 
+
 
 # Space-Track API login URL
 login_url = 'https://www.space-track.org/ajaxauth/login'
