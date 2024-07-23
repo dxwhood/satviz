@@ -1,7 +1,7 @@
 // js/main.js
 
 
-import * as THREE from 'three';
+import * as THREE from './lib/three.module.js';
 
 // Scene setup
 const scene = new THREE.Scene();
