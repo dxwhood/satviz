@@ -1,13 +1,13 @@
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify, request, send_from_directory
 import json
 import os
 from src.backend.utils import json_utils
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../../frontend/static')
 
 @app.route('/')
 def home():
-    return 'Hello, World!'
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/data', methods=['GET'])
 def get_data():
