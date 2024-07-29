@@ -10,8 +10,14 @@
     </style>
 </head>
 <body>
+    <div id="ui">
+        <label for="rotationSpeedX">X Rotation Speed: <span id="rotationSpeedXValue">0.01</span></label>
+        <input type="range" id="rotationSpeedX" min="0" max="0.1" step="0.01" value="0.01">
+        <label for="rotationSpeedY">Y Rotation Speed: <span id="rotationSpeedYValue">0.01</span></label>
+        <input type="range" id="rotationSpeedY" min="0" max="0.1" step="0.01" value="0.01">
+    </div>
+
     <!-- The script tags for Three.js and the main app logic -->
     <script type="module" src="/static/js/main.js"></script>
-
 </body>
 </html>
