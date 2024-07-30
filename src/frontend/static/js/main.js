@@ -2,6 +2,23 @@
 
 
 import * as THREE from './lib/three.module.js';
+import { GUI } from './lib/lil-gui.esm.min.js'
+
+
+// GUI setup
+const gui = new GUI();
+
+const params = {
+    xRotationSpeed: 0.01,
+    yRotationSpeed: 0.01,
+    zRotationSpeed: 0.01,
+    color: 0x00ff00
+}
+
+gui.add( params, 'xRotationSpeed', 0, 0.3, 0.005);
+gui.add( params, 'yRotationSpeed', 0, 0.3, 0.005);
+gui.add( params, 'zRotationSpeed', 0, 0.3, 0.005);
+gui.addColor( params, 'color');
 
 
 // Scene setup
@@ -15,40 +32,23 @@ document.body.appendChild(renderer.domElement);
 
 // Geometry
 const geometry = new THREE.BoxGeometry();
-const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const material = new THREE.MeshBasicMaterial({ color: params.color });
 const cube = new THREE.Mesh(geometry, material);
 scene.add(cube);
 
 // Position the camera
 camera.position.z = 5;
 
-// Handle rotation speed controls
-const rotationSpeedXSlider = document.getElementById('rotationSpeedX');
-const rotationSpeedXValueLabel = document.getElementById('rotationSpeedXValue');
-let rotationSpeedX = parseFloat(rotationSpeedXSlider.value);
-
-rotationSpeedXSlider.addEventListener('input', function () {
-    rotationSpeedX = parseFloat(this.value);
-    rotationSpeedXValueLabel.innerHTML = rotationSpeedX.toFixed(2);
-});
-
-// Handle rotation speed controls
-const rotationSpeedYSlider = document.getElementById('rotationSpeedY');
-const rotationSpeedYValueLabel = document.getElementById('rotationSpeedYValue');
-let rotationSpeedY = parseFloat(rotationSpeedYSlider.value);
-
-rotationSpeedYSlider.addEventListener('input', function () {
-    rotationSpeedY = parseFloat(this.value);
-    rotationSpeedYValueLabel.innerHTML = rotationSpeedY.toFixed(2);
-});
-
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
 
     // Rotate the cube
-    cube.rotation.x += rotationSpeedX
-    cube.rotation.y += rotationSpeedY
+    cube.rotation.x += params.xRotationSpeed;
+    cube.rotation.y += params.yRotationSpeed;
+    cube.rotation.z += params.zRotationSpeed;
+    cube.material.color.setHex(params.color);
+
 
     // Render the scene
     renderer.render(scene, camera);
