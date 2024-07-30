@@ -39,9 +39,9 @@ scene.add(cube);
 // Position the camera
 camera.position.z = 5;
 
-// Animation loop
-function animate() {
-    requestAnimationFrame(animate);
+// Render loop
+function tick() {
+    requestAnimationFrame(tick);
 
     // Rotate the cube
     cube.rotation.x += params.xRotationSpeed;
@@ -54,4 +54,4 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-animate();
+tick();
