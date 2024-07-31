@@ -1,9 +1,9 @@
 // js/main.js
 
-
 import * as THREE from './lib/three.module.js';
 import { GUI } from './lib/lil-gui.esm.min.js'
 import Stats from './lib/stats.module.js';
+import {OrbitControls} from './lib/OrbitControls.js'
 
 // Stats setup
 const statsFPS = new Stats();
@@ -33,6 +33,11 @@ const params = {
         this.xRotationSpeed = 0;
         this.yRotationSpeed = 0;
         this.zRotationSpeed =0;
+    },
+    resetToOrigin: function(){
+        cube.rotation.x = 0;
+        cube.rotation.y = 0;
+        cube.rotation.z = 0;
     }
 }
 
@@ -41,11 +46,14 @@ gui.add( params, 'yRotationSpeed', 0, 0.3, 0.005).listen();
 gui.add( params, 'zRotationSpeed', 0, 0.3, 0.005).listen();
 gui.addColor(params, 'color');
 gui.add(params, 'freeze');
+gui.add(params, 'resetToOrigin');
 
 
 // Scene setup
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const axesHelper = new THREE.AxesHelper( 5 );
+scene.add( axesHelper );
 
 // Renderer
 const renderer = new THREE.WebGLRenderer();
@@ -54,25 +62,32 @@ document.body.appendChild(renderer.domElement);
 
 // Geometry
 const geometry = new THREE.BoxGeometry();
-const material = new THREE.MeshBasicMaterial({ color: params.color });
+const material = new THREE.MeshBasicMaterial({ color: params.color, wireframe: true});
 const cube = new THREE.Mesh(geometry, material);
 scene.add(cube);
 
 // Position the camera
 camera.position.z = 5;
 
-// Camera Controls Setup
-document.addEventListener('mousewheel', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    camera.position.z += event.deltaY / 250;
-}, { passive: false });
+// Orbit Camera Control Setup
+const controls = new OrbitControls(camera, renderer.domElement)
+// Allow for full rotation
+controls.maxPolarAngle = Math.PI; // 180 degrees
+controls.minPolarAngle = 0;      
+controls.maxAzimuthAngle = Infinity; // Unlimited horizontal rotation
+controls.minAzimuthAngle = -Infinity; // Unlimited horizontal rotation
+controls.enableDamping = true; // Enable damping for smoother controls
+controls.dampingFactor = 0.01;
+controls.enablePan = false; 
+
 
 // Render loop
 function tick() {
     statsFPS.begin()
     statsMS.begin()
     statsMB.begin()
+
+    controls.update()
 
     // Rotate the cube
     cube.rotation.x += params.xRotationSpeed;
