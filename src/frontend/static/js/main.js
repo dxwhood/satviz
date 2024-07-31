@@ -61,6 +61,12 @@ scene.add(cube);
 // Position the camera
 camera.position.z = 5;
 
+// Camera Controls Setup
+document.addEventListener('mousewheel', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    camera.position.z += event.deltaY / 250;
+}, { passive: false });
 
 // Render loop
 function tick() {
