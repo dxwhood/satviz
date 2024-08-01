@@ -3,7 +3,7 @@ import json
 import os
 from src.backend.utils import json_utils
 
-app = Flask(__name__, static_folder='../../frontend/static')
+app = Flask(__name__, static_folder='../../frontend/static', static_url_path='/static')
 
 @app.route('/')
 def home():
@@ -24,6 +24,11 @@ def get_data():
     json_utils.pprint(data[1])
 
     return jsonify(data)
+
+@app.route('/test/earth_texture')
+def test_earth_texture():
+    return send_from_directory(os.path.join(app.static_folder, 'assets/textures'), 'earth_texture.jpg')
+
 
 if __name__ == '__main__':
     app.run(debug=True)

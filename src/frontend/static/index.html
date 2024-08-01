@@ -7,11 +7,21 @@
     <style>
         body { margin: 0; }
         canvas { display: block; }
+        #cameraPosition {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
-
-    <!-- The script tags for Three.js and the main app logic -->
+    <div id="cameraPosition">Camera Position: </div>
+    <!-- Main app logic -->
     <script type="module" src="/static/js/main.js"></script>
 </body>
 </html>
