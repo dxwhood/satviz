@@ -36,8 +36,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Day and Night textures load
-const dayTexture = new THREE.TextureLoader().load('/static/assets/textures/8k_earth_daymap.jpg')    // TODO: Make globe HDer
-const nightTexture = new THREE.TextureLoader().load('/static/assets/textures/8k_earth_nightmap.jpg')
+const dayTexture = new THREE.TextureLoader().load('/static/assets/textures/earthmap10k.jpg')  
+const nightTexture = new THREE.TextureLoader().load('/static/assets/textures/earthlights10k.jpg')
 
 // Geometry
 const geometry = new THREE.SphereGeometry(5, 100, 50); 
