@@ -35,17 +35,27 @@ renderer.setPixelRatio(window.devicePixelRatio)
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Day and Night textures load
+// Earth textures load
 const dayTexture = new THREE.TextureLoader().load('/static/assets/textures/earthmap10k.jpg')  
 const nightTexture = new THREE.TextureLoader().load('/static/assets/textures/earthlights10k.jpg')
+const bumpTexture = new THREE.TextureLoader().load('/static/assets/textures/earthbump10k.jpg')
 
 // Geometry
-const geometry = new THREE.SphereGeometry(5, 100, 50); 
-const material = new THREE.MeshBasicMaterial({
-    map: dayTexture  //default texture: day
+const geometry = new THREE.SphereGeometry(5, 200, 100); 
+const material = new THREE.MeshPhongMaterial({
+    map: dayTexture, //default texture: day
+    bumpMap: bumpTexture,
+    bumpScale: 80
 });
 const globe = new THREE.Mesh(geometry, material);
 scene.add(globe);
+
+// Lighting
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5, 5, 5).normalize();
+scene.add(light);
+const ambientLight = new THREE.AmbientLight(0x404040, 20); // Soft white light
+scene.add(ambientLight);
 
 // Position the camera
 camera.position.z = 20;
@@ -70,6 +80,7 @@ const params = {
     yRotationSpeed: 0,
     zRotationSpeed: 0,
     globeSize: 1,
+    bumpScale: 80,
     texture: dayTexture,
     axes: true, //toggle helper axes
 
@@ -92,6 +103,9 @@ gui.add(params, 'globeSize', 1, 20, 0.2).listen();
 gui.add(params, 'texture', {day: dayTexture, night: nightTexture, 'day and night': dayTexture}).onChange(value => {
     globe.material.map = value;
     globe.material.needsUpdate = true;}); // TODO: add day & night real-ish time
+gui.add(params, 'bumpScale', 0, 200).onChange(value => {
+    globe.material.bumpScale = value;
+    globe.material.needsUpdate = true;});
 gui.add(params, 'axes').onChange(function(){
     axesHelper.visible = !axesHelper.visible;
 })
