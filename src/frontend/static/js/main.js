@@ -35,6 +35,13 @@ renderer.setPixelRatio(window.devicePixelRatio)
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// Handle window resize
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
 // Earth textures load
 const dayTexture = new THREE.TextureLoader().load('/static/assets/textures/earthmap10k.jpg')  
 const nightTexture = new THREE.TextureLoader().load('/static/assets/textures/earthlights10k.jpg')
@@ -55,7 +62,7 @@ const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(5, 5, 5).normalize();
 scene.add(light);
 const ambientLight = new THREE.AmbientLight(0x404040, 20); // Soft white light
-scene.add(ambientLight);
+scene.add(ambientLight); 
 
 // Position the camera
 camera.position.z = 20;
