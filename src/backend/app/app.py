@@ -9,25 +9,14 @@ app = Flask(__name__, static_folder='../../frontend/static', static_url_path='/s
 def home():
     return send_from_directory(app.static_folder, 'index.html')
 
-@app.route('/data', methods=['GET'])
-def get_data():
 
-    # Path to the JSON file
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    data_dir = os.path.join(current_dir, '../../../data/ST_gp_data.json')
-    
-    # Open and read the JSON file
-    with open(data_dir, 'r') as file:
-        data = json.load(file)  # assuming this is a list
+@app.route('/api/gp_data', methods=['GET'])
+def get_gp_data():
+    file_path = os.path.join(app.static_folder, 'data', 'ST_gp_data.json')
 
-    print("DEBUG: ")
-    json_utils.pprint(data[1])
-
+    with open(file_path, 'r') as file:
+        data = json.load(file)
     return jsonify(data)
-
-@app.route('/test/earth_texture')
-def test_earth_texture():
-    return send_from_directory(os.path.join(app.static_folder, 'assets/textures'), 'earth_texture.jpg')
 
 
 if __name__ == '__main__':

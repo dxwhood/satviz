@@ -4,6 +4,7 @@ import * as THREE from './lib/three.module.js';
 import { GUI } from './lib/lil-gui.esm.min.js'
 import Stats from './lib/stats.module.js';
 import {OrbitControls} from './lib/OrbitControls.js'
+import * as sat_utils from './satellite_utils.js'
 
 
 // Stats setup
@@ -118,6 +119,16 @@ gui.add(params, 'axes').onChange(function(){
 })
 gui.add(params, 'freeze');
 gui.add(params, 'resetToOrigin');
+
+let gp_data = null
+
+// Test satellite utils
+fetch('/api/gp_data')
+    .then(response => response.json())
+    .then(data => {
+        gp_data = data
+    })
+    .catch(error => console.error('Error fetching data:', error));
 
 
 // Render loop
