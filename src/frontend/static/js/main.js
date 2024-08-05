@@ -7,6 +7,8 @@ import {OrbitControls} from './lib/OrbitControls.js'
 import * as sat_utils from './satellite_utils.js'
 
 
+const SCALE_FACTOR = 1274; // divide km by this to get units in 3D space
+
 // Stats setup
 const statsFPS = new Stats();
 statsFPS.showPanel(0); // Panel 0 = fps
@@ -120,15 +122,44 @@ gui.add(params, 'axes').onChange(function(){
 gui.add(params, 'freeze');
 gui.add(params, 'resetToOrigin');
 
-let gp_data = null
 
-// Test satellite utils
-fetch('/api/gp_data')
-    .then(response => response.json())
-    .then(data => {
-        gp_data = data
-    })
-    .catch(error => console.error('Error fetching data:', error));
+function fetchData() {
+    return fetch('/api/gp_data')
+        .then(response => {
+           return response.json();
+        })
+        .catch(error => console.error('Error fetching data:', error));
+}
+
+// JS array slicing example as comment:
+// const arr = [1, 2, 3, 4, 5];
+// const slicedArr = arr.slice(1, 3); // [2, 3]
+
+let positionTest = null;
+fetchData()
+.then(gp_data => {
+    console.log("Example" + gp_data[1])
+    let gp_slice = gp_data.slice(0, 10)
+    let tle_data = sat_utils.excract_TLE(gp_slice)
+    console.log(tle_data)
+
+    positionTest = sat_utils.get_sat_ecef(tle_data[1])
+    return positionTest
+})
+.then(coords => {
+    console.log(coords);
+    const dotGeometry = new THREE.BufferGeometry();
+    dotGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([coords.x/SCALE_FACTOR, coords.y/SCALE_FACTOR, coords.z/SCALE_FACTOR]), 3));
+    const dotMaterial = new THREE.PointsMaterial({ size: 0.1, color: 0xff0000 });
+    const dot = new THREE.Points(dotGeometry, dotMaterial);
+    scene.add(dot);
+}
+)
+
+
+
+// Point render Test
+
 
 
 // Render loop
