@@ -131,6 +131,41 @@ function fetchGPData() {
         .catch(error => console.error('Error fetching data:', error));
 }
 
+
+
+// Custom Shader Material for Circular Points
+const uniforms = {
+    size: { value: 0.25 }
+};
+
+const vertexShader = `
+uniform float size;
+void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = size * (300.0 / -mvPosition.z); // Scale point size based on distance
+    gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+const fragmentShader = `
+void main() {
+    float r = 0.0, delta = 0.0, alpha = 0.8;
+    vec2 cxy = 2.0 * gl_PointCoord - 1.0;
+    r = dot(cxy, cxy);
+    if (r > 1.0) {
+        discard;
+    }
+    gl_FragColor = vec4(1.0, 1.0, 1.0, alpha); 
+}
+`;
+
+const satMaterial = new THREE.ShaderMaterial({
+    uniforms: uniforms,
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    transparent: true
+});
+
 let positionTest = null;
 fetchGPData()
 .then(gp_data => {
@@ -152,7 +187,6 @@ fetchGPData()
     const satGeometry = new THREE.BufferGeometry();
     satGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     satGeometry.setAttribute('index', new THREE.BufferAttribute(indices), 1);
-    const satMaterial = new THREE.PointsMaterial({ size: 0.1, color: 0xff0000 });
     const sat_points = new THREE.Points(satGeometry,satMaterial);
     scene.add(sat_points);
 
