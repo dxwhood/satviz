@@ -166,14 +166,18 @@ const satMaterial = new THREE.ShaderMaterial({
     transparent: true
 });
 
+let sats = [];
+const satGeometry = new THREE.BufferGeometry();
+const sat_points = new THREE.Points(satGeometry,satMaterial);
+
 
 fetchGPData()
 .then(gp_data => {
     console.log(gp_data[1])
-    // let gp_slice = gp_data.slice(0, 3000);
     let gp_slice = gp_data;
-    let sats = sat_utils.extend_sat_objects(gp_slice);
-    console.log(sats);
+    // let gp_slice = gp_data.slice(0, 1000);
+
+    sats = sat_utils.extend_sat_objects(gp_slice);
     return sats;
 })
 .then(sats => {
@@ -184,14 +188,14 @@ fetchGPData()
         indices[i] = i;
     }
 
-    const satGeometry = new THREE.BufferGeometry();
     satGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     satGeometry.setAttribute('index', new THREE.BufferAttribute(indices), 1);
-    const sat_points = new THREE.Points(satGeometry,satMaterial);
     scene.add(sat_points);
 
     sat_utils.propagateAllSatellites(sats)
     sat_utils.updateSatellitePositions(satGeometry, sats)
+
+    tick();
 })
 
 
@@ -219,6 +223,7 @@ fetchGPData()
 
 // Render loop
 function tick() {
+
     statsFPS.begin()
     statsMS.begin()
     statsMB.begin()
@@ -232,6 +237,9 @@ function tick() {
 
     // Scale the globe
     globe.scale.set(params.globeSize, params.globeSize, params.globeSize);
+
+    sat_utils.propagateAllSatellites(sats)
+    sat_utils.updateSatellitePositions(sat_points.geometry, sats)
 
     // Render the scene
     renderer.render(scene, camera);
@@ -248,4 +256,4 @@ function tick() {
     requestAnimationFrame(tick);
 }
 
-tick();
+

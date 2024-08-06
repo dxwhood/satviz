@@ -22,10 +22,14 @@ export function extend_sat_objects(gp_data){
 }
 
 
-export function propagateAllSatellites(sats, epoch=new(Date)){
-    console.log(`in propagateAllSatellites - epoch ${epoch}`);
-    for(let i=0; i < sats.length; i++){
-        sats[i]['position'] = get_sat_ecef(sats[i].satrec, epoch);
+export function propagateAllSatellites(sats, epoch = new Date()) {
+    for (let i = 0; i < sats.length; i++) {
+        const position = get_sat_ecef(sats[i], epoch);
+        if (isFinite(position.x) && isFinite(position.y) && isFinite(position.z)) {
+            sats[i]['position'] = position;
+        } else {
+            sats[i]['position'] = (0,0,0); // or some default valid position
+        }
     }
     return sats;
 }
@@ -48,17 +52,15 @@ export function updateSatellitePositions(geometry, satellites) {
     geometry.attributes.position.needsUpdate = true; // Mark the attribute for update
 }
 
-export function get_sat_ecef(satrec, epoch=null){
+export function get_sat_ecef(sat, epoch=null){
     if (epoch === null){
         epoch = new Date();
     }
-    // console.log(`in get_sat_ecef`)
-    // console.log(satrec)
-    let positionAndVelocity = satjs.propagate(satrec, epoch);
+    let positionAndVelocity = satjs.propagate(sat.satrec, epoch);
     let positionEci = positionAndVelocity.position;
-    //if undefined, return (0,0,0)
+    //if undefined set to 0,0,0
     if (positionEci === undefined){
-        return {x: 0, y: 0, z: 0};
+        positionEci = {x: 0, y: 0, z: 0};
     }
     let gmst = satjs.gstime(epoch)
     return satjs.eciToEcf(positionEci, gmst)
