@@ -52,10 +52,14 @@ export function get_sat_ecef(satrec, epoch=null){
     if (epoch === null){
         epoch = new Date();
     }
-    console.log(`in get_sat_ecef`)
-    console.log(satrec)
+    // console.log(`in get_sat_ecef`)
+    // console.log(satrec)
     let positionAndVelocity = satjs.propagate(satrec, epoch);
     let positionEci = positionAndVelocity.position;
+    //if undefined, return (0,0,0)
+    if (positionEci === undefined){
+        return {x: 0, y: 0, z: 0};
+    }
     let gmst = satjs.gstime(epoch)
     return satjs.eciToEcf(positionEci, gmst)
 }

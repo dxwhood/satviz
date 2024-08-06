@@ -135,7 +135,7 @@ function fetchGPData() {
 
 // Custom Shader Material for Circular Points
 const uniforms = {
-    size: { value: 0.25 }
+    size: { value: 0.1 }
 };
 
 const vertexShader = `
@@ -166,12 +166,12 @@ const satMaterial = new THREE.ShaderMaterial({
     transparent: true
 });
 
-let positionTest = null;
+
 fetchGPData()
 .then(gp_data => {
     console.log(gp_data[1])
-    let gp_slice = gp_data.slice(0, 3000);
-    // let gp_slice = gp_data;
+    // let gp_slice = gp_data.slice(0, 3000);
+    let gp_slice = gp_data;
     let sats = sat_utils.extend_sat_objects(gp_slice);
     console.log(sats);
     return sats;
