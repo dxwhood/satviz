@@ -1,5 +1,6 @@
 import * as satjs from './lib/satellite.es.js';
 
+const SCALE_FACTOR = 1274; // divide km by this to get units in 3D space
 
 // const positionAndVelocity = sgp4(0, 0);
 
@@ -11,24 +12,49 @@ export function satTest(data){
 }
 
 
-export function excract_TLE(gp_data){
-    let tle = []
+export function extend_sat_objects(gp_data){
     for (let i = 0; i < gp_data.length; i++) {
-        let obj = {}
-        obj['TLE_LINE0'] = gp_data[i].TLE_LINE0;
-        obj['TLE_LINE1'] = gp_data[i].TLE_LINE1;
-        obj['TLE_LINE2'] = gp_data[i].TLE_LINE2;
-        obj['satrec'] = satjs.twoline2satrec(gp_data[i].TLE_LINE1, gp_data[i].TLE_LINE2)
-        tle.push(obj);
+        gp_data[i]['satrec'] = satjs.twoline2satrec(gp_data[i].TLE_LINE1, gp_data[i].TLE_LINE2);
+        gp_data[i]['position'] = get_sat_ecef(gp_data[i]);
+        gp_data[i]['index'] = i;
     }
-    return tle;
+    return gp_data;
 }
 
-export function get_sat_ecef(sat_obj, epoch=null){
+
+export function propagateAllSatellites(sats, epoch=new(Date)){
+    console.log(`in propagateAllSatellites - epoch ${epoch}`);
+    for(let i=0; i < sats.length; i++){
+        sats[i]['position'] = get_sat_ecef(sats[i].satrec, epoch);
+    }
+    return sats;
+}
+
+// Update Function
+export function updateSatellitePositions(geometry, satellites) {
+    let positions = geometry.attributes.position.array;
+
+    // Assuming the positions have already been updated in the satellites array
+    for (let i = 0; i < satellites.length; i++) {
+        let positionEcf = satellites[i].position;
+        
+        if (positionEcf) {
+            positions[i * 3] = positionEcf.x/SCALE_FACTOR;
+            positions[i * 3 + 1] = positionEcf.y/SCALE_FACTOR;
+            positions[i * 3 + 2] = positionEcf.z/SCALE_FACTOR;
+        }
+    }
+
+    geometry.attributes.position.needsUpdate = true; // Mark the attribute for update
+}
+
+export function get_sat_ecef(satrec, epoch=null){
     if (epoch === null){
         epoch = new Date();
     }
-    let positionAndVelocity = satjs.propagate(sat_obj.satrec, epoch);
+    console.log(`in get_sat_ecef`)
+    console.log(satrec)
+    let positionAndVelocity = satjs.propagate(satrec, epoch);
     let positionEci = positionAndVelocity.position;
     let gmst = satjs.gstime(epoch)
     return satjs.eciToEcf(positionEci, gmst)

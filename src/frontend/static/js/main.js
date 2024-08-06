@@ -123,7 +123,7 @@ gui.add(params, 'freeze');
 gui.add(params, 'resetToOrigin');
 
 
-function fetchData() {
+function fetchGPData() {
     return fetch('/api/gp_data')
         .then(response => {
            return response.json();
@@ -131,34 +131,55 @@ function fetchData() {
         .catch(error => console.error('Error fetching data:', error));
 }
 
-// JS array slicing example as comment:
-// const arr = [1, 2, 3, 4, 5];
-// const slicedArr = arr.slice(1, 3); // [2, 3]
-
 let positionTest = null;
-fetchData()
+fetchGPData()
 .then(gp_data => {
-    console.log("Example" + gp_data[1])
-    let gp_slice = gp_data.slice(0, 10)
-    let tle_data = sat_utils.excract_TLE(gp_slice)
-    console.log(tle_data)
-
-    positionTest = sat_utils.get_sat_ecef(tle_data[1])
-    return positionTest
+    console.log(gp_data[1])
+    let gp_slice = gp_data.slice(0, 3000);
+    // let gp_slice = gp_data;
+    let sats = sat_utils.extend_sat_objects(gp_slice);
+    console.log(sats);
+    return sats;
 })
-.then(coords => {
-    console.log(coords);
-    const dotGeometry = new THREE.BufferGeometry();
-    dotGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([coords.x/SCALE_FACTOR, coords.y/SCALE_FACTOR, coords.z/SCALE_FACTOR]), 3));
-    const dotMaterial = new THREE.PointsMaterial({ size: 0.1, color: 0xff0000 });
-    const dot = new THREE.Points(dotGeometry, dotMaterial);
-    scene.add(dot);
-}
-)
+.then(sats => {
+    let positions = new Float32Array(sats.length * 3);
+    let indices = new Float32Array(sats.length * 3);
+
+    for(let i=0; i < sats.length; i++){
+        indices[i] = i;
+    }
+
+    const satGeometry = new THREE.BufferGeometry();
+    satGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    satGeometry.setAttribute('index', new THREE.BufferAttribute(indices), 1);
+    const satMaterial = new THREE.PointsMaterial({ size: 0.1, color: 0xff0000 });
+    const sat_points = new THREE.Points(satGeometry,satMaterial);
+    scene.add(sat_points);
+
+    sat_utils.propagateAllSatellites(sats)
+    sat_utils.updateSatellitePositions(satGeometry, sats)
+})
 
 
 
-// Point render Test
+// // Raycaster for Interaction
+// var raycaster = new THREE.Raycaster();
+// var mouse = new THREE.Vector2();
+
+// function onMouseClick(event) {
+//     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+//     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+//     raycaster.setFromCamera(mouse, camera);
+//     var intersects = raycaster.intersectObject(points);
+
+//     if (intersects.length > 0) {
+//         var intersect = intersects[0];
+//         var index = intersect.index; // Get the index of the intersected point
+//         var satelliteInfo = satelliteData[index]; // Retrieve satellite info
+//         displaySatelliteInfo(satelliteInfo);
+//     }
+// }
 
 
 
