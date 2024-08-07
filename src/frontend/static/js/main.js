@@ -173,9 +173,29 @@ const sat_points = new THREE.Points(satGeometry,satMaterial);
 
 fetchGPData()
 .then(gp_data => {
-    console.log(gp_data[1])
+
+    //find the min and max EPOCH values
+    let min_epoch = gp_data[0].EPOCH;
+    let max_epoch = gp_data[0].EPOCH;
+    let min_altitude = gp_data[0].MEAN_MOTION;
+    let max_altitude = gp_data[0].MEAN_MOTION;
+    for (let i = 0; i < gp_data.length; i++) {
+        if (gp_data[i].EPOCH < min_epoch) {
+            min_epoch = gp_data[i].EPOCH;
+            min_altitude = gp_data[i].MEAN_MOTION;
+        }
+        if (gp_data[i].EPOCH > max_epoch) {
+            max_epoch = gp_data[i].EPOCH;
+            max_altitude = gp_data[i].MEAN_MOTION;
+        }
+    }
+    console.log('min_epoch:', min_epoch);
+    console.log('max_epoch:', max_epoch);
+    console.log('min_altitude:', min_altitude);
+    console.log('max_altitude:', max_altitude);
+
     let gp_slice = gp_data;
-    // let gp_slice = gp_data.slice(0, 1000);
+    // let gp_slice = gp_data.slice(0, 10000);
 
     sats = sat_utils.extend_sat_objects(gp_slice);
     return sats;
@@ -220,6 +240,9 @@ fetchGPData()
 // }
 
 
+let lastUpdate = Date.now();
+const updateInterval = 1000 / 30; // 30 updates per second
+
 
 // Render loop
 function tick() {
@@ -228,7 +251,7 @@ function tick() {
     statsMS.begin()
     statsMB.begin()
 
-    controls.update()
+   
 
     // Rotate the globe
     globe.rotation.x += params.xRotationSpeed;
@@ -238,8 +261,17 @@ function tick() {
     // Scale the globe
     globe.scale.set(params.globeSize, params.globeSize, params.globeSize);
 
-    sat_utils.propagateAllSatellites(sats)
-    sat_utils.updateSatellitePositions(sat_points.geometry, sats)
+    const now = Date.now();
+    if (now - lastUpdate >= updateInterval) {
+        lastUpdate = now;
+
+        // Update satellite positions
+        sat_utils.propagateAllSatellites(sats);
+        sat_utils.updateSatellitePositions(sat_points.geometry, sats);
+    }
+
+    controls.update()
+
 
     // Render the scene
     renderer.render(scene, camera);
