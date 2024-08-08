@@ -58,7 +58,9 @@ const material = new THREE.MeshPhongMaterial({
     bumpScale: 80
 });
 const globe = new THREE.Mesh(geometry, material);
+//rotate the globe so that the texture is facing the right way
 scene.add(globe);
+globe.rotation.x = Math.PI/2;
 
 // Lighting
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -67,20 +69,21 @@ scene.add(light);
 const ambientLight = new THREE.AmbientLight(0x404040, 20); // Soft white light
 scene.add(ambientLight); 
 
-// Position the camera
-camera.position.z = 20;
 
-// Orbit Camera Control Setup
-const controls = new OrbitControls(camera, renderer.domElement)
+camera.position.set(0, 20, 0); // Adjust initial position as needed
+camera.up.set( 0, 0, 1 );
+
+
+const controls = new OrbitControls(camera, renderer.domElement);
+
 // Allow for full rotation
 controls.maxPolarAngle = Math.PI; // 180 degrees
-controls.minPolarAngle = 0;      
+controls.minPolarAngle = 0;
 controls.maxAzimuthAngle = Infinity; // Unlimited horizontal rotation
 controls.minAzimuthAngle = -Infinity; // Unlimited horizontal rotation
 controls.enableDamping = true; // Enable damping for smoother controls
 controls.dampingFactor = 0.01;
-controls.enablePan = false; 
-
+controls.enablePan = false;
 
 // GUI setup
 const gui = new GUI();
