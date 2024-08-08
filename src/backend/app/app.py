@@ -2,9 +2,17 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 import json
 import os
 from src.backend.utils import json_utils
+from flask_cors import CORS
+
 
 app = Flask(__name__, static_folder='../../frontend/static', static_url_path='/static')
+CORS(app)  # Enable CORS for your Flask app
 
+@app.after_request
+def add_coep_headers(response):
+    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+    response.headers['Cross-Origin-Resource-Policy'] = 'cross-origin'
+    return response
 @app.route('/')
 def home():
     return send_from_directory(app.static_folder, 'index.html')

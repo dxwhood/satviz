@@ -166,7 +166,7 @@ const satMaterial = new THREE.ShaderMaterial({
     transparent: true
 });
 
-const worker = new Worker('./static/js/satelliteWorker.js');
+const worker = new Worker('./static/js/satelliteWorker.js', { type: "module" });
 
 let sats = [];
 const satGeometry = new THREE.BufferGeometry();

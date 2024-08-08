@@ -2,15 +2,6 @@ import * as satjs from './lib/satellite.es.js';
 
 const SCALE_FACTOR = 1274; // divide km by this to get units in 3D space
 
-// const positionAndVelocity = sgp4(0, 0);
-
-// // URL to the JSON file
-// const url = '../data/ST_gp_data.json';
-
-export function satTest(data){
-    console.log(data[1]);
-}
-
 
 export function extend_sat_objects(gp_data){
     for (let i = 0; i < gp_data.length; i++) {
@@ -34,7 +25,7 @@ export function propagateAllSatellites(sats, epoch = new Date()) {
     return sats;
 }
 
-// Update Function
+
 export function updateSatellitePositions(geometry, satellites) {
 
     let positions = geometry.attributes.position.array;
@@ -59,6 +50,7 @@ export function propagateAndUpdate(sats, geometry, epoch = new Date()) {
     updateSatellitePositions(geometry, sats)
     return sats;
 }
+
 
 export function get_sat_ecef(sat, epoch=null){
     if (epoch === null){
