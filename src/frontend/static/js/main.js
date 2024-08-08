@@ -142,10 +142,11 @@ const vertexShader = `
 uniform float size;
 void main() {
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = size * (300.0 / -mvPosition.z); // Scale point size based on distance
-    gl_Position = projectionMatrix * mvPosition;
+    gl_PointSize = size * (300.0 / -mvPosition.z);
+    gl_Position = projectionMatrix * mvPosition * instanceMatrix; // Correct matrix multiplication order
 }
 `;
+
 
 const fragmentShader = `
 void main() {
@@ -159,18 +160,20 @@ void main() {
 }
 `;
 
-const satMaterial = new THREE.ShaderMaterial({
-    uniforms: uniforms,
-    vertexShader: vertexShader,
-    fragmentShader: fragmentShader,
-    transparent: true
+// Custom Shader Material for Circular Points, adjusted for InstancedMesh
+const satMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,  // White color, you can change as needed
+    transparent: true,
+    opacity: 0.8
 });
 
-let sats = [];
-const satGeometry = new THREE.BufferGeometry();
-const sat_points = new THREE.Points(satGeometry,satMaterial);
+// Assuming you know the maximum number of satellites
+const maxSats = 30000; // Example: 10,000 satellites
+const satGeometry = new THREE.SphereGeometry(0.02, 20, 20); // Smaller sphere geometry for each satellite
+const satInstancedMesh = new THREE.InstancedMesh(satGeometry, satMaterial, maxSats);
+scene.add(satInstancedMesh);
 
-
+let satellites = [];
 fetchGPData()
 .then(gp_data => {
 
@@ -197,26 +200,32 @@ fetchGPData()
     let gp_slice = gp_data;
     // let gp_slice = gp_data.slice(0, 10000);
 
-    sats = sat_utils.extend_sat_objects(gp_slice);
-    return sats;
+    gp_slice = sat_utils.extend_sat_objects(gp_slice);
+    return gp_slice;
 })
 .then(sats => {
-    let positions = new Float32Array(sats.length * 3);
-    let indices = new Float32Array(sats.length * 3);
+    const dummy = new THREE.Object3D(); // Helper for manipulating matrices
 
-    for(let i=0; i < sats.length; i++){
-        indices[i] = i;
+    satellites = sats;
+    sat_utils.propagateAllSatellites(sats);
+
+    for (let i = 0; i < sats.length; i++) {
+        // Update the dummy object's position
+        // dummy.position.set(sats[i].position.x , sats[i].position.y , sats[i].position.z );
+        dummy.position.set(0,0,0);
+
+        dummy.updateMatrix();
+
+        // Set the matrix for the instance
+        satInstancedMesh.setMatrixAt(i, dummy.matrix);
     }
 
-    satGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    satGeometry.setAttribute('index', new THREE.BufferAttribute(indices), 1);
-    scene.add(sat_points);
+    satInstancedMesh.instanceMatrix.needsUpdate = true;
 
-    sat_utils.propagateAllSatellites(sats)
-    sat_utils.updateSatellitePositions(satGeometry, sats)
-
+    // Start the render loop
     tick();
 })
+
 
 
 
@@ -266,8 +275,8 @@ function tick() {
         lastUpdate = now;
 
         // Update satellite positions
-        sat_utils.propagateAllSatellites(sats);
-        sat_utils.updateSatellitePositions(sat_points.geometry, sats);
+        sat_utils.propagateAllSatellites(satellites);
+        sat_utils.updateSatellitePositions(satInstancedMesh, satellites);
     }
 
     controls.update()

@@ -1,4 +1,8 @@
+//sat_utils.js
+
 import * as satjs from './lib/satellite.es.js';
+import * as THREE from './lib/three.module.js';
+
 
 const SCALE_FACTOR = 1274; // divide km by this to get units in 3D space
 
@@ -28,29 +32,30 @@ export function propagateAllSatellites(sats, epoch = new Date()) {
         if (isFinite(position.x) && isFinite(position.y) && isFinite(position.z)) {
             sats[i]['position'] = position;
         } else {
-            sats[i]['position'] = (0,0,0); // or some default valid position
+            sats[i]['position'] = (0,0,0); 
         }
     }
     return sats;
 }
 
-// Update Function
-export function updateSatellitePositions(geometry, satellites) {
-    let positions = geometry.attributes.position.array;
+export function updateSatellitePositions(satInstancedMesh, satellites) {
+    const dummy = new THREE.Object3D();
+    console.log(`satellites length: ${satellites.length}`);
 
-    // Assuming the positions have already been updated in the satellites array
     for (let i = 0; i < satellites.length; i++) {
         let positionEcf = satellites[i].position;
-        
         if (positionEcf) {
-            positions[i * 3] = positionEcf.x/SCALE_FACTOR;
-            positions[i * 3 + 1] = positionEcf.y/SCALE_FACTOR;
-            positions[i * 3 + 2] = positionEcf.z/SCALE_FACTOR;
+            dummy.position.set(positionEcf.x / SCALE_FACTOR, positionEcf.y /SCALE_FACTOR, positionEcf.z /SCALE_FACTOR);
+            dummy.updateMatrix();
+
+            satInstancedMesh.setMatrixAt(i, dummy.matrix);
+
         }
     }
 
-    geometry.attributes.position.needsUpdate = true; // Mark the attribute for update
+    satInstancedMesh.instanceMatrix.needsUpdate = true;
 }
+
 
 export function get_sat_ecef(sat, epoch=null){
     if (epoch === null){
