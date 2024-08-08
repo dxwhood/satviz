@@ -36,6 +36,7 @@ export function propagateAllSatellites(sats, epoch = new Date()) {
 
 // Update Function
 export function updateSatellitePositions(geometry, satellites) {
+
     let positions = geometry.attributes.position.array;
 
     // Assuming the positions have already been updated in the satellites array
@@ -50,6 +51,13 @@ export function updateSatellitePositions(geometry, satellites) {
     }
 
     geometry.attributes.position.needsUpdate = true; // Mark the attribute for update
+}
+
+
+export function propagateAndUpdate(sats, geometry, epoch = new Date()) {
+    propagateAllSatellites(sats, epoch)
+    updateSatellitePositions(geometry, sats)
+    return sats;
 }
 
 export function get_sat_ecef(sat, epoch=null){

@@ -166,9 +166,12 @@ const satMaterial = new THREE.ShaderMaterial({
     transparent: true
 });
 
+const worker = new Worker('./static/js/satelliteWorker.js');
+
 let sats = [];
 const satGeometry = new THREE.BufferGeometry();
 const sat_points = new THREE.Points(satGeometry,satMaterial);
+
 
 
 fetchGPData()
@@ -191,16 +194,14 @@ fetchGPData()
     }
     console.log('min_epoch:', min_epoch);
     console.log('max_epoch:', max_epoch);
-    console.log('min_altitude:', min_altitude);
-    console.log('max_altitude:', max_altitude);
-
-    let gp_slice = gp_data;
-    // let gp_slice = gp_data.slice(0, 10000);
-
-    sats = sat_utils.extend_sat_objects(gp_slice);
+    //gp_data = gp_data.slice(0, 10000);
+  
+    sats = sat_utils.extend_sat_objects(gp_data);
+    console.log('sats:', sats[1]);
     return sats;
 })
 .then(sats => {
+
     let positions = new Float32Array(sats.length * 3);
     let indices = new Float32Array(sats.length * 3);
 
@@ -212,12 +213,29 @@ fetchGPData()
     satGeometry.setAttribute('index', new THREE.BufferAttribute(indices), 1);
     scene.add(sat_points);
 
-    sat_utils.propagateAllSatellites(sats)
-    sat_utils.updateSatellitePositions(satGeometry, sats)
+
+    // Send sats to the worker for initialization
+    worker.postMessage({ type: 'initialize', sats });
 
     tick();
 })
+let flag = true;
+worker.onmessage = function(e) {
+    const { buffer } = e.data;
+    let positions = new Float32Array(buffer);
 
+    // Update positions in the geometry
+    satGeometry.attributes.position.array.set(positions);
+    satGeometry.attributes.position.needsUpdate = true;
+    // Update positions in the sats array
+    for (let i = 0; i < sats.length; i++) {
+        sats[i].position = { x: positions[i * 3]*SCALE_FACTOR, y: positions[i * 3 + 1]*SCALE_FACTOR, z: positions[i * 3 + 2]*SCALE_FACTOR};
+    }
+    if(flag){
+        console.log('sats:', sats[1]);
+        flag = false;
+    }
+};
 
 
 // // Raycaster for Interaction
@@ -265,9 +283,8 @@ function tick() {
     if (now - lastUpdate >= updateInterval) {
         lastUpdate = now;
 
-        // Update satellite positions
-        sat_utils.propagateAllSatellites(sats);
-        sat_utils.updateSatellitePositions(sat_points.geometry, sats);
+        let positions = new Float32Array(satGeometry.attributes.position.array);
+        worker.postMessage({ type: 'update', epoch: new Date(), buffer: positions.buffer }, [positions.buffer]);
     }
 
     controls.update()
