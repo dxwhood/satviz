@@ -1,7 +1,8 @@
 import * as satjs from './lib/satellite.es.js';
 
-const SCALE_FACTOR = 1274; // divide km by this to get units in 3D space
-
+export const EARTH_SIZE = 50; // Earth size in 3D space
+export const EARTH_RADIUS = 6371; // Earth radius in km
+export const SCALE_FACTOR = EARTH_RADIUS / EARTH_SIZE; // Divide km by this to get units in 3D space
 
 export function extend_sat_objects(gp_data){
     for (let i = 0; i < gp_data.length; i++) {

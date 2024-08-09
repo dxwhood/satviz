@@ -2,7 +2,6 @@
 
 import * as sat_utils from './satellite_utils.js';
 
-const SCALE_FACTOR = 1274;
 
 let sats = [];
 
@@ -17,9 +16,9 @@ onmessage = function(e) {
         for (let i = 0; i < updatedSats.length; i++) {
             let positionEcf = updatedSats[i].position;
             if (positionEcf) {
-                positions[i * 3] = positionEcf.x / SCALE_FACTOR;
-                positions[i * 3 + 1] = positionEcf.y / SCALE_FACTOR;
-                positions[i * 3 + 2] = positionEcf.z / SCALE_FACTOR;
+                positions[i * 3] = positionEcf.x / sat_utils.SCALE_FACTOR;
+                positions[i * 3 + 1] = positionEcf.y / sat_utils.SCALE_FACTOR;
+                positions[i * 3 + 2] = positionEcf.z / sat_utils.SCALE_FACTOR;
             }
         }
 

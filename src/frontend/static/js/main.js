@@ -4,10 +4,7 @@ import * as THREE from './lib/three.module.js';
 import { GUI } from './lib/lil-gui.esm.min.js'
 import Stats from './lib/stats.module.js';
 import {OrbitControls} from './lib/OrbitControls.js'
-import * as sat_utils from './satellite_utils.js'
-
-
-const SCALE_FACTOR = 1274; // divide km by this to get units in 3D space
+import * as utils from './satellite_utils.js'
 
 // Stats setup
 const statsFPS = new Stats();
@@ -51,7 +48,7 @@ const nightTexture = new THREE.TextureLoader().load('/static/assets/textures/ear
 const bumpTexture = new THREE.TextureLoader().load('/static/assets/textures/earthbump10k.jpg')
 
 // Geometry
-const geometry = new THREE.SphereGeometry(5, 200, 100); 
+const geometry = new THREE.SphereGeometry(utils.EARTH_SIZE, 200, 100); 
 const material = new THREE.MeshPhongMaterial({
     map: dayTexture, //default texture: day
     bumpMap: bumpTexture,
@@ -70,7 +67,7 @@ const ambientLight = new THREE.AmbientLight(0x404040, 20); // Soft white light
 scene.add(ambientLight); 
 
 
-camera.position.set(0, 20, 0); // Adjust initial position as needed
+camera.position.set(0, 200, 0); // Adjust initial position as needed
 camera.up.set( 0, 0, 1 );
 
 
@@ -82,7 +79,7 @@ controls.minPolarAngle = 0;
 controls.maxAzimuthAngle = Infinity; // Unlimited horizontal rotation
 controls.minAzimuthAngle = -Infinity; // Unlimited horizontal rotation
 controls.enableDamping = true; // Enable damping for smoother controls
-controls.dampingFactor = 0.01;
+controls.dampingFactor = 0.05;
 controls.enablePan = false;
 
 // GUI setup
@@ -138,7 +135,7 @@ function fetchGPData() {
 
 // Custom Shader Material for Circular Points
 const uniforms = {
-    size: { value: 0.1 }
+    size: { value: 1 }
 };
 
 const vertexShader = `
@@ -171,6 +168,8 @@ const satMaterial = new THREE.ShaderMaterial({
 
 const worker = new Worker('./static/js/satelliteWorker.js', { type: "module" });
 
+// satmaterial as points
+
 let sats = [];
 const satGeometry = new THREE.BufferGeometry();
 const sat_points = new THREE.Points(satGeometry,satMaterial);
@@ -197,10 +196,10 @@ fetchGPData()
     }
     console.log('min_epoch:', min_epoch);
     console.log('max_epoch:', max_epoch);
-    //gp_data = gp_data.slice(0, 10000);
+    gp_data = gp_data.slice(0, 100);
   
-    sats = sat_utils.extend_sat_objects(gp_data);
-    console.log('sats:', sats[1]);
+    sats = utils.extend_sat_objects(gp_data);
+
     return sats;
 })
 .then(sats => {
@@ -222,7 +221,7 @@ fetchGPData()
 
     tick();
 })
-let flag = true;
+
 worker.onmessage = function(e) {
     const { buffer } = e.data;
     let positions = new Float32Array(buffer);
@@ -232,38 +231,27 @@ worker.onmessage = function(e) {
     satGeometry.attributes.position.needsUpdate = true;
     // Update positions in the sats array
     for (let i = 0; i < sats.length; i++) {
-        sats[i].position = { x: positions[i * 3]*SCALE_FACTOR, y: positions[i * 3 + 1]*SCALE_FACTOR, z: positions[i * 3 + 2]*SCALE_FACTOR};
+        sats[i].position = { x: positions[i * 3], y: positions[i * 3 + 1], z: positions[i * 3 + 2]};
     }
-    if(flag){
-        console.log('sats:', sats[1]);
-        flag = false;
-    }
+    satGeometry.computeBoundingSphere();
+
 };
 
 
-// // Raycaster for Interaction
-// var raycaster = new THREE.Raycaster();
-// var mouse = new THREE.Vector2();
 
-// function onMouseClick(event) {
-//     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-//     mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+// Initialize Raycaster
+const raycaster = new THREE.Raycaster();
+raycaster.params.Points.threshold = 0.2;
+const pointer = new THREE.Vector2();
 
-//     raycaster.setFromCamera(mouse, camera);
-//     var intersects = raycaster.intersectObject(points);
+// Handle mouse movements
+document.addEventListener('pointermove', (event) => {
+    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+});
 
-//     if (intersects.length > 0) {
-//         var intersect = intersects[0];
-//         var index = intersect.index; // Get the index of the intersected point
-//         var satelliteInfo = satelliteData[index]; // Retrieve satellite info
-//         displaySatelliteInfo(satelliteInfo);
-//     }
-// }
-
-
-let lastUpdate = Date.now();
-const updateInterval = 1000 / 30; // 30 updates per second
-
+let timeNow = Date.now();
+let polling_rate = 1000/5
 
 // Render loop
 function tick() {
@@ -272,7 +260,6 @@ function tick() {
     statsMS.begin()
     statsMB.begin()
 
-   
 
     // Rotate the globe
     globe.rotation.x += params.xRotationSpeed;
@@ -282,16 +269,32 @@ function tick() {
     // Scale the globe
     globe.scale.set(params.globeSize, params.globeSize, params.globeSize);
 
-    const now = Date.now();
-    if (now - lastUpdate >= updateInterval) {
-        lastUpdate = now;
 
-        let positions = new Float32Array(satGeometry.attributes.position.array);
-        worker.postMessage({ type: 'update', epoch: new Date(), buffer: positions.buffer }, [positions.buffer]);
+    let positions = new Float32Array(satGeometry.attributes.position.array);
+    worker.postMessage({ type: 'update', epoch: new Date(), buffer: positions.buffer }, [positions.buffer]);
+
+    // compute bounding box of points buffergeometry based on polling
+    if (Date.now() - timeNow > polling_rate){
+        timeNow = Date.now();        
+
+
+        // Update raycaster
+        raycaster.setFromCamera(pointer, camera);
+
+        // Check for intersections with satellite points
+        const intersects = raycaster.intersectObject(sat_points);
+
+        if (intersects.length > 0) {
+            const intersected = intersects[0];
+
+            // Log the intersected satellite
+            const satIndex = intersected.index;
+            console.log('Hovered Satellite:', sats[satIndex]['OBJECT_NAME']);
+        }
+
     }
 
     controls.update()
-
 
     // Render the scene
     renderer.render(scene, camera);
