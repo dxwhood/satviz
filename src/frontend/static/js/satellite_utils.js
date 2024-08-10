@@ -66,3 +66,27 @@ export function get_sat_ecef(sat, epoch=null){
     let gmst = satjs.gstime(epoch)
     return satjs.eciToEcf(positionEci, gmst)
 }
+
+
+// Custom Shaders for Circular Points
+
+export const vertexShader = `
+uniform float size;
+void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = size * (300.0 / -mvPosition.z); // Scale point size based on distance
+    gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+export const fragmentShader = `
+void main() {
+    float r = 0.0, delta = 0.0, alpha = 0.8;
+    vec2 cxy = 2.0 * gl_PointCoord - 1.0;
+    r = dot(cxy, cxy);
+    if (r > 1.0) {
+        discard;
+    }
+    gl_FragColor = vec4(1.0, 1.0, 1.0, alpha); 
+}
+`;
