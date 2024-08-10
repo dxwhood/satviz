@@ -21,7 +21,10 @@ const App = (() => {
         globe: null,
         axesHelper: null,
         raycaster: null,
-        pointer: null
+        pointer: null,
+        currentlyHovered: null,
+        currentlySelected: null,
+        hoverTimer: null,
     }
 
     // GUI parameters
@@ -121,6 +124,7 @@ const App = (() => {
         return { fps: statsFPS, ms: statsMS, mb: statsMB };
     }
 
+
     // Function to initialize satellites and fetch data
     async function initSatellites() {
         try {
@@ -130,6 +134,8 @@ const App = (() => {
             sats = utils.extend_sat_objects(gp_data);
 
             state.sats = sats; // Add to state
+
+            console.log(sats[142]); // Print a satellite object for debugging
 
             // Satellite Material and Geometry
             const satGeometry = new THREE.BufferGeometry();
@@ -192,13 +198,41 @@ const App = (() => {
         if (intersects.length > 0) {
             const intersected = intersects[0];
             const satIndex = intersected.index;
-            console.log(`Hovered Satellite: ${state.sats[satIndex]['OBJECT_NAME']} | ${state.sats[satIndex]['NORAD_CAT_ID']}`);
+            // console.log(`Hovered Satellite: ${state.sats[satIndex]['OBJECT_NAME']} | ${state.sats[satIndex]['NORAD_CAT_ID']}`);
             
             return intersected;
         }
         else { 
             return null;
         }
+    }
+
+    function hoverThreshold(currentlyHovered, seconds = 0.25) {
+        let timeNow = performance.now();
+        if (currentlyHovered === null){
+        }
+        else if (state.currentlyHovered === null){
+            state.currentlyHovered = currentlyHovered;
+            state.hoverTimer = timeNow;
+        }
+        else if (currentlyHovered.index !== state.currentlyHovered.index){
+            state.currentlyHovered = currentlyHovered;
+            state.hoverTimer = timeNow;
+        }
+        else if (timeNow - state.hoverTimer > 1000 * seconds){ 
+            state.currentlySelected = currentlyHovered;
+            return true;
+        }
+        return false;
+    }
+
+    function displaySatelliteName(satIndex){
+        console.log(`Selected Satellite: ${state.sats[satIndex]['OBJECT_NAME']} | ${state.sats[satIndex]['NORAD_CAT_ID']}`);
+        // Create threejs text right above the satellite
+        const text = new THREE.TextGeometry(state.sats[satIndex]['OBJECT_NAME'], { font: 'helvetiker', size: 10, height: 5 });
+        const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const textMesh = new THREE.Mesh(text, textMaterial);
+        textMesh.position.set(state.sats[satIndex]['']); // Set position to satellite position
     }
     
     // Function for the rendering loop
@@ -212,7 +246,11 @@ const App = (() => {
         worker.postMessage({ type: 'update', epoch: new Date(), buffer: positions.buffer }, [positions.buffer]);
 
         // Raycaster
-        let intersected = raycasterIntersect();
+        let currentlyHovered = raycasterIntersect();
+        if (currentlyHovered && hoverThreshold(currentlyHovered)){
+            displaySatelliteName(currentlyHovered.index);
+        }
+
 
         controls.update();
 
@@ -225,6 +263,7 @@ const App = (() => {
     // Accessible functions
     return {
         init: function() {
+            const timestamp = performance.now();
             loadTextures();
             initScene();
             initRaycaster();
