@@ -9,7 +9,7 @@ import {CSS2DRenderer, CSS2DObject} from './lib/CSS2DRenderer.js'
 
 
 const App = (() => {
-    let scene, camera, renderer, labelRenderer, controls, sats = null;
+    let scene, camera, renderer, labelRenderer, sats = null;
     let worker;
     let stats;
     
@@ -27,6 +27,7 @@ const App = (() => {
         currentlyHovered: null,
         currentlySelected: null,
         hoverTimer: null,
+        controls: null
     }
 
     // GUI parameters
@@ -93,7 +94,8 @@ const App = (() => {
 
         // Camera controls
         //controls = new OrbitControls(camera, renderer.domElement);
-        controls = new OrbitControls( camera, labelRenderer.domElement );
+        let controls = new OrbitControls( camera, labelRenderer.domElement );
+        state.controls = controls; // Add to state
 
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
@@ -336,7 +338,7 @@ const App = (() => {
         );
 
         // Get adjusted position above cursor
-        const adjustedPosition = adjustLabelAboveCursor(originalPosition, camera, renderer, 50);
+        const adjustedPosition = adjustLabelAboveCursor(originalPosition, camera, renderer, 40);
     
         // Pass the selected satellite index to the shader
         state.satMaterial.uniforms.selectedIndex.value = state.currentlySelected.index;
@@ -346,6 +348,96 @@ const App = (() => {
         satLabel.element.textContent = `${state.sats[state.currentlySelected.index]['OBJECT_NAME']} | ${state.sats[state.currentlySelected.index]['NORAD_CAT_ID']}`;
         satLabel.position.copy(adjustedPosition);
     }
+
+
+    /**
+     * Smoothly transitions the camera to focus on a newly selected satellite.
+     * 
+     * Achieves this by:
+     * - Calculating a new camera position at a fixed distance from the satellite.
+     * - Simultaneously animating the camera's position and orbit controls' target 
+     *   using a GSAP timeline, ensuring both movements happen in sync without jumps.
+     */
+    function selectNewSatellite() {
+    
+        if (state.currentlySelected) {
+
+            const transitionConfig = {
+                distance: 10, // Distance from the satellite during the transition (adjust as needed)
+                duration: 1.5, // Combined duration for both rotation and translation
+                easing: "power2.inOut", // Easing function for a smooth transition
+            };
+
+            const targetSatellite = state.sats[state.currentlySelected.index];
+            const satellitePosition = targetSatellite.position.clone();
+    
+            // Calculate the vector from the Earth's center to the satellite
+            const directionFromEarth = new THREE.Vector3()
+                .subVectors(satellitePosition, new THREE.Vector3(0, 0, 0))
+                .normalize();
+    
+            // Set the camera's new position by moving away from the satellite along this vector
+            const newCameraPosition = satellitePosition
+                .clone()
+                .add(directionFromEarth.multiplyScalar(transitionConfig.distance));
+    
+            // Disable controls during animation
+            state.controls.enabled = false;
+    
+            // Store the original positions
+            const originalCameraPosition = camera.position.clone();
+            const originalControlsTarget = state.controls.target.clone();
+    
+            // Create objects to animate controls target and camera position
+            const animationTargets = {
+                controlX: originalControlsTarget.x,
+                controlY: originalControlsTarget.y,
+                controlZ: originalControlsTarget.z,
+                camX: originalCameraPosition.x,
+                camY: originalCameraPosition.y,
+                camZ: originalCameraPosition.z,
+            };
+    
+            // GSAP timeline for synchronized animations
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    // Re-enable controls after the animation
+                    state.controls.enabled = true;
+                    state.controls.update(); // Ensure the controls are fully updated after animation
+                },
+            });
+    
+            // Animate controls target and camera position together in one smooth motion
+            tl.to(animationTargets, {
+                duration: transitionConfig.duration,
+                controlX: satellitePosition.x,
+                controlY: satellitePosition.y,
+                controlZ: satellitePosition.z,
+                camX: newCameraPosition.x,
+                camY: newCameraPosition.y,
+                camZ: newCameraPosition.z,
+                ease: transitionConfig.easing,
+                onUpdate: () => {
+                    state.controls.target.set(
+                        animationTargets.controlX,
+                        animationTargets.controlY,
+                        animationTargets.controlZ
+                    );
+                    camera.position.set(
+                        animationTargets.camX,
+                        animationTargets.camY,
+                        animationTargets.camZ
+                    );
+                    camera.lookAt(state.controls.target);
+                },
+            });
+        }
+
+        displaySelectedSatellite();
+    }
+    
+    
+    
 
     function initEventListeners() {
         // Window resize listener
@@ -360,7 +452,7 @@ const App = (() => {
         document.addEventListener('pointerdown', () => {
             if (state.currentlyHovered) {
                 state.currentlySelected = state.currentlyHovered;
-
+                selectNewSatellite();
             }
         });
     }
@@ -378,21 +470,21 @@ const App = (() => {
         // Raycaster
         let currentlyHovered = raycasterIntersect();
         if (state.currentlySelected){
-            displaySelectedSatellite(state.currentlySelected.index);
-            //satMaterial.uniforms.selectedIndex.value = state.currentlySelected.index;
+            displaySelectedSatellite();
         }
         if (currentlyHovered && hoverThreshold(currentlyHovered)){
+            satNameDiv.style.visibility = 'visible'; // Ensure it is visible when needed
+
             displaySatelliteName(currentlyHovered.index);
         }
-        else if (currentlyHovered === null && !state.currentlySelected){
-            //make label invisible
-            satLabel.element.textContent = '';
-        }
+        else if (currentlyHovered === null && !state.currentlySelected) {
+            satNameDiv.style.visibility = 'hidden'; // Use 'visibility' property to hide the div
+        } 
 
         // Selected satellite
 
 
-        controls.update();
+        state.controls.update();
 
         renderer.render(scene, camera);
         labelRenderer.render( scene, camera );
