@@ -17,10 +17,53 @@
             font-family: Arial, sans-serif;
             font-size: 12px;
         }
+        #satelliteInfoPanel {
+            position: absolute;
+            bottom: 10px; /* Adjust as needed */
+            right: 10px; /* Adjust as needed */
+            width: 250px; /* Adjust width as needed */
+            padding: 15px;
+            background-color: rgba(1, 77, 78, 0.9); /* Dark teal background with slight transparency */
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); /* Subtle shadow for depth */
+            font-family: 'Roboto', sans-serif; /* Consistent font */
+            color: white; /* White text for readability */
+        }
+
+        .info-field {
+            margin-bottom: 10px; /* Space between fields */
+        }
+
+        .info-label {
+            font-weight: bold; /* Bold label text */
+            display: inline-block;
+            width: 80px; /* Fixed width for alignment */
+        }
+
+        .info-value {
+            display: inline-block;
+        }
+
     </style>
 </head>
 <body>
     <div id="cameraPosition">Camera Position: </div>
+    <div id="satelliteInfoPanel">
+        <div class="info-field">
+            <span class="info-label">Name:</span>
+            <span class="info-value">Earth</span>
+        </div>
+        <div class="info-field">
+            <span class="info-label">Orbit:</span>
+            <span class="info-value">Geosynchronous</span>
+        </div>
+        <div class="info-field">
+            <span class="info-label">Speed:</span>
+            <span class="info-value">7.8 km/s</span>
+        </div>
+        <!-- Add more fields here -->
+    </div>
+    
     <script type='module' src="/static/js/satellite_utils.js"></script>
     <!-- Main app logic -->
     <script type="module" src="/static/js/main.js"></script>
