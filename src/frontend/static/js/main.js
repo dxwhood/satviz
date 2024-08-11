@@ -316,6 +316,15 @@ const App = (() => {
     }
     
 
+    function initEventListeners() {
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    }
+
     // Function for the rendering loop
     function tick() {
         Object.values(stats).forEach(stat => stat.begin()); //Begin stats monitoring
@@ -337,7 +346,6 @@ const App = (() => {
         }
 
         // Selected satellite
-
 
         controls.update();
 
@@ -362,7 +370,8 @@ const App = (() => {
             initScene();
             initRaycaster();
             initGUI();
-            stats = initStats();     
+            stats = initStats();
+            initEventListeners();
             initSatellites().then(() => {
                 tick(); // Start the render loop once everything is initialized
             });
