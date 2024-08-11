@@ -40,7 +40,7 @@ const App = (() => {
         const satNameDiv = document.createElement('div');
         satNameDiv.className = 'label';
         satNameDiv.textContent = 'Earth';
-        satNameDiv.style.backgroundColor = 'rgba(47, 79, 79, 0.9)'; // Dark slate gray with 90% opacity
+        satNameDiv.style.backgroundColor = 'rgba(1,77,78, 0.9)'; // Dark slate gray with 90% opacity
         satNameDiv.style.color = 'white'; // White text for contrast
         satNameDiv.style.fontFamily = "'Roboto', sans-serif"; // More legible font
         satNameDiv.style.fontSize = '12px'; // Smaller font size for subtlety

@@ -90,19 +90,30 @@ uniform float alpha;
 varying float vIndex; // Varying variable to receive the index from vertex shader
 
 void main() {
-    float r = 0.0, delta = 0.0;
+    float r = 0.0;
     vec2 cxy = 2.0 * gl_PointCoord - 1.0;
     r = dot(cxy, cxy);
+
     if (r > 1.0) {
-        discard;
+        discard; // Discard fragments outside the circle
     }
 
-    // Check if this point is the selected satellite
+    // Set the color for the satellite point
+    vec4 color;
     if (int(vIndex) == selectedIndex) {
-        gl_FragColor = vec4(1.0, 0.0, 0.0, alpha); // Red color for selected satellite
+        color = vec4(1.0, 0.0, 0.0, alpha); // Red color for selected satellite
     } else {
-        gl_FragColor = vec4(1.0, 1.0, 1.0, alpha); // Default color (white) for other satellites
+        color = vec4(1.0, 1.0, 1.0, alpha); // Default color (white) for other satellites
+    }
+
+    // Create a thin black border by adjusting the fragment color based on the distance from the center
+    float borderSize = 0.15; // Adjust this value to control the thickness of the border
+    if (r > 1.0 - borderSize) {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, alpha); // Black border
+    } else {
+        gl_FragColor = color; // Original color inside the border
     }
 }
 `;
+
 
