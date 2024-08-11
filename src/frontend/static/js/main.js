@@ -5,10 +5,11 @@ import { GUI } from './lib/lil-gui.esm.min.js'
 import Stats from './lib/stats.module.js';
 import {OrbitControls} from './lib/OrbitControls.js'
 import * as utils from './satellite_utils.js'
+import {CSS2DRenderer, CSS2DObject} from './lib/CSS2DRenderer.js'
 
 
 const App = (() => {
-    let scene, camera, renderer, controls, sats = null;
+    let scene, camera, renderer, labelRenderer, controls, sats = null;
     let worker;
     let stats;
     
@@ -34,6 +35,25 @@ const App = (() => {
         texture: textures.day,
         axes: true, //toggle helper axes
     }
+
+    const satNameDiv = document.createElement( 'div' );
+    satNameDiv.className = 'label';
+    satNameDiv.textContent = 'Earth';
+    satNameDiv.style.backgroundColor = 'white';
+    satNameDiv.style.position = 'absolute';
+    satNameDiv.style.transform = 'translate(-50%, -50%)'; // Centers the label on the cursor
+    const satLabel = new CSS2DObject(satNameDiv);
+
+
+    function initSatLabel(){
+        satLabel.position.set(1.5 * utils.EARTH_SIZE, 0, 0 );
+        satLabel.center.set(0.5, 0.5);
+        state.satPoints.add(satLabel);
+        satLabel.layers.set(0);
+        
+    }
+
+    
     
     function loadTextures() {
         textures.day = new THREE.TextureLoader().load('/static/assets/textures/earthmap10k.jpg');
@@ -51,13 +71,24 @@ const App = (() => {
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+
+        labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize( window.innerWidth, window.innerHeight );
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        document.body.appendChild( labelRenderer.domElement );
+
+
+
         // Camera
         camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 200, 0); // Adjust initial position as needed
         camera.up.set( 0, 0, 1 );
 
         // Camera controls
-        controls = new OrbitControls(camera, renderer.domElement);
+        //controls = new OrbitControls(camera, renderer.domElement);
+        controls = new OrbitControls( camera, labelRenderer.domElement );
+
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.enablePan = false;
@@ -89,6 +120,7 @@ const App = (() => {
         state.globe = globe; // Add to state
         scene.add(globe);
         state.globe.rotation.x = Math.PI/2; // Rotate globe to match ECEF coordinates
+
     }
 
     // GUI setup 
@@ -170,16 +202,25 @@ const App = (() => {
                 satGeometry.attributes.position.array.set(positions);
                 satGeometry.attributes.position.needsUpdate = true;
                 satGeometry.computeBoundingSphere();
+
+                // Update the state.sats array with the new positions
+                for (let i = 0; i < sats.length; i++) {
+                    sats[i].position = new THREE.Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+                }
             };
+
+            initSatLabel();
         } catch (error) {
             console.error('Error fetching satellite data:', error);
         }
     }
 
+
+
     function initRaycaster() {
         const raycaster = new THREE.Raycaster();
         state.raycaster = raycaster; // Add to state
-        raycaster.params.Points.threshold = 0.2;
+        raycaster.params.Points.threshold = 0.3;
         const pointer = new THREE.Vector2();
         state.pointer = pointer; // Add to state
 
@@ -193,12 +234,16 @@ const App = (() => {
     function raycasterIntersect() {
         // Raycaster
         state.raycaster.setFromCamera(state.pointer, camera);
-        const intersects = state.raycaster.intersectObject(state.satPoints);
+        const intersects = state.raycaster.intersectObjects([state.globe, state.satPoints]);
 
         if (intersects.length > 0) {
             const intersected = intersects[0];
+            if (intersected.object === state.globe) {
+                state.currentlyHovered = null;
+                return null;
+            }
             const satIndex = intersected.index;
-            // console.log(`Hovered Satellite: ${state.sats[satIndex]['OBJECT_NAME']} | ${state.sats[satIndex]['NORAD_CAT_ID']}`);
+            // console.log(Hovered Satellite: ${state.sats[satIndex]['OBJECT_NAME']} | ${state.sats[satIndex]['NORAD_CAT_ID']});
             
             return intersected;
         }
@@ -207,7 +252,7 @@ const App = (() => {
         }
     }
 
-    function hoverThreshold(currentlyHovered, seconds = 0.25) {
+    function hoverThreshold(currentlyHovered, seconds = 0.01) {
         let timeNow = performance.now();
         if (currentlyHovered === null){
         }
@@ -220,21 +265,57 @@ const App = (() => {
             state.hoverTimer = timeNow;
         }
         else if (timeNow - state.hoverTimer > 1000 * seconds){ 
-            state.currentlySelected = currentlyHovered;
+            //state.currentlySelected = currentlyHovered;
+            state.currentlyHovered = currentlyHovered;
             return true;
         }
         return false;
     }
 
-    function displaySatelliteName(satIndex){
-        console.log(`Selected Satellite: ${state.sats[satIndex]['OBJECT_NAME']} | ${state.sats[satIndex]['NORAD_CAT_ID']}`);
-        // Create threejs text right above the satellite
-        const text = new THREE.TextGeometry(state.sats[satIndex]['OBJECT_NAME'], { font: 'helvetiker', size: 10, height: 5 });
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const textMesh = new THREE.Mesh(text, textMaterial);
-        textMesh.position.set(state.sats[satIndex]['']); // Set position to satellite position
+
+    /**
+     * Adjusts the position of a label to appear consistently above the cursor in 3D space.
+     * This function converts the label's world position to Normalized Device Coordinates (NDC),
+     * applies a vertical offset in screen space, and then converts it back to world coordinates.
+     * The offset ensures that the label is displayed above the cursor, independent of camera angle or distance.
+     *
+     * @param {THREE.Vector3} worldPosition - The original world position of the label.
+     * @param {THREE.Camera} camera - The camera used in the scene.
+     * @param {THREE.Renderer} renderer - The renderer used for drawing the scene.
+     * @param {number} offsetPixels - The number of pixels to offset the label above the cursor.
+     * @returns {THREE.Vector3} - The new world position of the label, adjusted to be above the cursor.
+     */
+    function adjustLabelAboveCursor(worldPosition, camera, renderer, offsetPixels = 30) {
+        // Convert world position to normalized device coordinate (NDC) space
+        const ndcPosition = worldPosition.clone().project(camera);
+    
+        // Adjust the y-coordinate in NDC space (NDC space ranges from -1 to 1 in both x and y)
+        ndcPosition.y += offsetPixels / (renderer.domElement.height / 2); // Converts pixel offset to NDC units
+    
+        // Convert back from NDC to world space
+        const newWorldPosition = ndcPosition.unproject(camera);
+    
+        return newWorldPosition;
     }
     
+    
+
+    function displaySatelliteName(satIndex){
+        const originalPosition = new THREE.Vector3(
+            state.currentlyHovered.point.x,
+            state.currentlyHovered.point.y,
+            state.currentlyHovered.point.z
+        );
+    
+        // Get adjusted position above cursor
+        const adjustedPosition = adjustLabelAboveCursor(originalPosition, camera, renderer);
+    
+        // Update the label's position
+        satLabel.element.textContent = `${state.sats[satIndex]['OBJECT_NAME']} | ${state.sats[satIndex]['NORAD_CAT_ID']}`;
+        satLabel.position.copy(adjustedPosition);
+    }
+    
+
     // Function for the rendering loop
     function tick() {
         Object.values(stats).forEach(stat => stat.begin()); //Begin stats monitoring
@@ -250,11 +331,24 @@ const App = (() => {
         if (currentlyHovered && hoverThreshold(currentlyHovered)){
             displaySatelliteName(currentlyHovered.index);
         }
+        else if (currentlyHovered === null){
+            //make label invisible
+            satLabel.element.textContent = '';
+        }
+
+        // Selected satellite
 
 
         controls.update();
 
         renderer.render(scene, camera);
+        labelRenderer.render( scene, camera );
+
+
+        // Update camera position in <div id="cameraPosition">Camera Position: </div>
+        const cameraPosition = document.getElementById('cameraPosition');
+        cameraPosition.innerHTML = `Camera Position: ${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)}`;
+
 
         Object.values(stats).forEach(stat => stat.end()); //End stats monitoring
     }
@@ -281,7 +375,3 @@ const App = (() => {
 
 // Start the application
 App.init();
-
-
-
-
