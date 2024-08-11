@@ -71,22 +71,38 @@ export function get_sat_ecef(sat, epoch=null){
 // Custom Shaders for Circular Points
 
 export const vertexShader = `
+attribute float index; // Attribute for satellite index
 uniform float size;
+varying float vIndex; // Varying to pass the index to the fragment shader
+
 void main() {
+    vIndex = index; // Assign the index to the varying variable
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     gl_PointSize = size * (300.0 / -mvPosition.z); // Scale point size based on distance
     gl_Position = projectionMatrix * mvPosition;
 }
 `;
 
+
 export const fragmentShader = `
+uniform int selectedIndex; // Uniform for the selected index
+uniform float alpha;
+varying float vIndex; // Varying variable to receive the index from vertex shader
+
 void main() {
-    float r = 0.0, delta = 0.0, alpha = 0.8;
+    float r = 0.0, delta = 0.0;
     vec2 cxy = 2.0 * gl_PointCoord - 1.0;
     r = dot(cxy, cxy);
     if (r > 1.0) {
         discard;
     }
-    gl_FragColor = vec4(1.0, 1.0, 1.0, alpha); 
+
+    // Check if this point is the selected satellite
+    if (int(vIndex) == selectedIndex) {
+        gl_FragColor = vec4(1.0, 0.0, 0.0, alpha); // Red color for selected satellite
+    } else {
+        gl_FragColor = vec4(1.0, 1.0, 1.0, alpha); // Default color (white) for other satellites
+    }
 }
 `;
+

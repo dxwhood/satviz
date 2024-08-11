@@ -16,9 +16,10 @@ const App = (() => {
     const textures = {day: 'day', night: null, bump: null}; // String placeholder for GUI
 
     // Implement sate object 
-    let state = {
+    const state = {
         sats: [],
         satPoints: null,
+        satMaterial: null,
         globe: null,
         axesHelper: null,
         raycaster: null,
@@ -36,13 +37,19 @@ const App = (() => {
         axes: true, //toggle helper axes
     }
 
-    const satNameDiv = document.createElement( 'div' );
-    satNameDiv.className = 'label';
-    satNameDiv.textContent = 'Earth';
-    satNameDiv.style.backgroundColor = 'white';
-    satNameDiv.style.position = 'absolute';
-    satNameDiv.style.transform = 'translate(-50%, -50%)'; // Centers the label on the cursor
-    const satLabel = new CSS2DObject(satNameDiv);
+        const satNameDiv = document.createElement('div');
+        satNameDiv.className = 'label';
+        satNameDiv.textContent = 'Earth';
+        satNameDiv.style.backgroundColor = 'rgba(47, 79, 79, 0.9)'; // Dark slate gray with 90% opacity
+        satNameDiv.style.color = 'white'; // White text for contrast
+        satNameDiv.style.fontFamily = "'Roboto', sans-serif"; // More legible font
+        satNameDiv.style.fontSize = '12px'; // Smaller font size for subtlety
+        satNameDiv.style.padding = '3px 6px'; // Smaller padding for a compact look
+        satNameDiv.style.borderRadius = '3px'; // Slightly rounded corners
+        satNameDiv.style.boxShadow = '0 0 5px rgba(0, 0, 0, 0.7)'; // Subtle shadow for depth
+        satNameDiv.style.position = 'absolute';
+        satNameDiv.style.transform = 'translate(-50%, -50%)'; // Centers the label on the cursor
+        const satLabel = new CSS2DObject(satNameDiv);
 
 
     function initSatLabel(){
@@ -53,7 +60,6 @@ const App = (() => {
         
     }
 
-    
     
     function loadTextures() {
         textures.day = new THREE.TextureLoader().load('/static/assets/textures/earthmap10k.jpg');
@@ -172,11 +178,16 @@ const App = (() => {
             // Satellite Material and Geometry
             const satGeometry = new THREE.BufferGeometry();
             const satMaterial = new THREE.ShaderMaterial({
-                uniforms: { size: { value: 1 } },
-                vertexShader: utils.vertexShader, // vertexShaderCode from your original code
-                fragmentShader: utils.fragmentShader, // fragmentShaderCode from your original code
+                uniforms: { 
+                    size: { value: 1 },
+                    selectedIndex: { value: -1 }, // Add uniform for selected satellite index
+                    alpha: { value: 0.8 }
+                },
+                vertexShader: utils.vertexShader,
+                fragmentShader: utils.fragmentShader,
                 transparent: true
             });
+            state.satMaterial = satMaterial; // Add to state
 
             const satPoints = new THREE.Points(satGeometry, satMaterial);
             state.satPoints = satPoints; // Add to state
@@ -216,7 +227,6 @@ const App = (() => {
     }
 
 
-
     function initRaycaster() {
         const raycaster = new THREE.Raycaster();
         state.raycaster = raycaster; // Add to state
@@ -230,6 +240,7 @@ const App = (() => {
             pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
         });
     }
+
 
     function raycasterIntersect() {
         // Raycaster
@@ -298,7 +309,6 @@ const App = (() => {
         return newWorldPosition;
     }
     
-    
 
     function displaySatelliteName(satIndex){
         const originalPosition = new THREE.Vector3(
@@ -315,13 +325,43 @@ const App = (() => {
         satLabel.position.copy(adjustedPosition);
     }
     
+    function displaySelectedSatellite(){
+        // Update selected satellite position
+        state.currentlySelected.point = state.sats[state.currentlySelected.index].position;
+
+        const originalPosition = new THREE.Vector3(
+            state.currentlySelected.point.x,
+            state.currentlySelected.point.y,
+            state.currentlySelected.point.z
+        );
+
+        // Get adjusted position above cursor
+        const adjustedPosition = adjustLabelAboveCursor(originalPosition, camera, renderer, 50);
+    
+        // Pass the selected satellite index to the shader
+        state.satMaterial.uniforms.selectedIndex.value = state.currentlySelected.index;
+
+
+        // Update the label's position
+        satLabel.element.textContent = `${state.sats[state.currentlySelected.index]['OBJECT_NAME']} | ${state.sats[state.currentlySelected.index]['NORAD_CAT_ID']}`;
+        satLabel.position.copy(adjustedPosition);
+    }
 
     function initEventListeners() {
+        // Window resize listener
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
             labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Satellite selection
+        document.addEventListener('pointerdown', () => {
+            if (state.currentlyHovered) {
+                state.currentlySelected = state.currentlyHovered;
+
+            }
         });
     }
 
@@ -337,15 +377,20 @@ const App = (() => {
 
         // Raycaster
         let currentlyHovered = raycasterIntersect();
+        if (state.currentlySelected){
+            displaySelectedSatellite(state.currentlySelected.index);
+            //satMaterial.uniforms.selectedIndex.value = state.currentlySelected.index;
+        }
         if (currentlyHovered && hoverThreshold(currentlyHovered)){
             displaySatelliteName(currentlyHovered.index);
         }
-        else if (currentlyHovered === null){
+        else if (currentlyHovered === null && !state.currentlySelected){
             //make label invisible
             satLabel.element.textContent = '';
         }
 
         // Selected satellite
+
 
         controls.update();
 
