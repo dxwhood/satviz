@@ -20,6 +20,7 @@ const App = (() => {
         sats: [],
         satPoints: null,
         satMaterial: null,
+        satGeometry: null,
         globe: null,
         axesHelper: null,
         raycaster: null,
@@ -222,7 +223,8 @@ const App = (() => {
                 }
             };
 
-            initSatLabel();
+            initSatLabel(); // Initialize satellite label now that satPoints is defined
+
         } catch (error) {
             console.error('Error fetching satellite data:', error);
         }
@@ -312,7 +314,12 @@ const App = (() => {
     }
     
 
-    function displaySatelliteName(satIndex){
+    function displayHoveredLabel(satIndex){
+        // If already selected, don't display hover label
+        if (state.currentlySelected !== null && state.currentlySelected.index === satIndex){
+            return
+        }
+
         const originalPosition = new THREE.Vector3(
             state.currentlyHovered.point.x,
             state.currentlyHovered.point.y,
@@ -327,7 +334,7 @@ const App = (() => {
         satLabel.position.copy(adjustedPosition);
     }
     
-    function displaySelectedSatellite(){
+    function displaySelectedLabel(){
         // Update selected satellite position
         state.currentlySelected.point = state.sats[state.currentlySelected.index].position;
 
@@ -338,7 +345,7 @@ const App = (() => {
         );
 
         // Get adjusted position above cursor
-        const adjustedPosition = adjustLabelAboveCursor(originalPosition, camera, renderer, 40);
+        const adjustedPosition = adjustLabelAboveCursor(originalPosition, camera, renderer, 50);
     
         // Pass the selected satellite index to the shader
         state.satMaterial.uniforms.selectedIndex.value = state.currentlySelected.index;
@@ -359,7 +366,6 @@ const App = (() => {
      *   using a GSAP timeline, ensuring both movements happen in sync without jumps.
      */
     function selectNewSatellite() {
-    
         if (state.currentlySelected) {
 
             const transitionConfig = {
@@ -432,10 +438,7 @@ const App = (() => {
                 },
             });
         }
-
-        displaySelectedSatellite();
     }
-    
     
     
 
@@ -463,22 +466,22 @@ const App = (() => {
 
         requestAnimationFrame(tick);
 
-        // Update the worker with the latest positions
+        // Get latest satellite positions from worker
         let positions = new Float32Array(state.satPoints.geometry.attributes.position.array);
         worker.postMessage({ type: 'update', epoch: new Date(), buffer: positions.buffer }, [positions.buffer]);
 
         // Raycaster
         let currentlyHovered = raycasterIntersect();
         if (state.currentlySelected){
-            displaySelectedSatellite();
+            displaySelectedLabel();
         }
-        if (currentlyHovered && hoverThreshold(currentlyHovered)){
-            satNameDiv.style.visibility = 'visible'; // Ensure it is visible when needed
+        if (currentlyHovered && hoverThreshold(currentlyHovered) ){
+            satNameDiv.style.visibility = 'visible'; 
 
-            displaySatelliteName(currentlyHovered.index);
+            displayHoveredLabel(currentlyHovered.index);
         }
         else if (currentlyHovered === null && !state.currentlySelected) {
-            satNameDiv.style.visibility = 'hidden'; // Use 'visibility' property to hide the div
+            satNameDiv.style.visibility = 'hidden'; 
         } 
 
         // Selected satellite
