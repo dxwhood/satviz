@@ -330,7 +330,7 @@ const App = (() => {
         const adjustedPosition = adjustLabelAboveCursor(originalPosition, camera, renderer);
     
         // Update the label's position
-        satLabel.element.textContent = `${state.sats[satIndex]['OBJECT_NAME']} | ${state.sats[satIndex]['NORAD_CAT_ID']}`;
+        satLabel.element.textContent = `${state.sats[satIndex]['OBJECT_NAME']} [${state.sats[satIndex]['NORAD_CAT_ID']}]`;
         satLabel.position.copy(adjustedPosition);
     }
     
@@ -350,12 +350,135 @@ const App = (() => {
         // Pass the selected satellite index to the shader
         state.satMaterial.uniforms.selectedIndex.value = state.currentlySelected.index;
 
-
         // Update the label's position
-        satLabel.element.textContent = `${state.sats[state.currentlySelected.index]['OBJECT_NAME']} | ${state.sats[state.currentlySelected.index]['NORAD_CAT_ID']}`;
+        satLabel.element.textContent = `${state.sats[state.currentlySelected.index]['OBJECT_NAME']} [${state.sats[state.currentlySelected.index]['NORAD_CAT_ID']}]`;
         satLabel.position.copy(adjustedPosition);
     }
 
+    function clearSatelliteInfo() {
+        const infoPanel = document.getElementById('satelliteInfoPanel');
+        
+        // Clear the content
+        infoPanel.innerHTML = '';
+    
+        // Optionally hide the panel if you want it to be invisible when no satellite is selected
+        infoPanel.style.display = 'none';
+    }
+
+    function displaySelectedInfo() {
+        if (state.currentlySelected) {
+            const satellite = state.sats[state.currentlySelected.index];
+    
+            // Get the info panel div
+            const infoPanel = document.getElementById('satelliteInfoPanel');
+    
+            // Clear any existing content
+            infoPanel.innerHTML = '';
+            //make the panel visible
+            infoPanel.style.display = 'block';
+    
+            // Helper function to create info fields
+            function createInfoField(label, value) {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'info-field';
+    
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'info-label';
+                labelSpan.textContent = `${label}:`;
+    
+                const valueSpan = document.createElement('span');
+                valueSpan.className = 'info-value';
+                valueSpan.textContent = value;
+    
+                fieldDiv.appendChild(labelSpan);
+                fieldDiv.appendChild(valueSpan);
+    
+                return fieldDiv;
+            }
+    
+            // 1. Basic Identification
+            const nameAndNorad = `${satellite.OBJECT_NAME} [${satellite.NORAD_CAT_ID}]`;
+    
+            // Deduce Object Type
+            let objectType = 'Unknown';
+            switch (satellite.OBJECT_TYPE) {
+                case 'PAYLOAD':
+                    objectType = 'Payload';
+                    break;
+                case 'ROCKET BODY':
+                    objectType = 'Rocket Body';
+                    break;
+                case 'DEBRIS':
+                    objectType = 'Debris';
+                    break;
+            }
+    
+            // Format the launch date as "YYYY MM DD"
+            let formattedLaunchDate = 'Unknown';
+            if (satellite.LAUNCH_DATE) {
+                const date = new Date(satellite.LAUNCH_DATE);
+                const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                formattedLaunchDate = date.toLocaleDateString('en-US', options);    
+            }
+    
+            // 2. Orbital Characteristics
+            // Orbit Type Deduction (simplified example)
+            let orbitType = 'Unknown Orbit';
+            const periapsis = parseFloat(satellite.PERIAPSIS);
+            const apoapsis = parseFloat(satellite.APOAPSIS);
+            const apsides = `${Math.round(periapsis)} km / ${Math.round(apoapsis)} km`;
+    
+
+            const eccentricity = parseFloat(satellite.ECCENTRICITY);
+            
+            if (apoapsis >= 35786 && periapsis >= 35786 && eccentricity < 0.01) {
+                orbitType = 'Geostationary Orbit (GEO)';
+            } else if (apoapsis >= 35786 && periapsis < 35786) {
+                orbitType = 'Geosynchronous Orbit (GSO)';
+            } else if (apoapsis >= 2000 && apoapsis < 35786 && periapsis >= 2000 && periapsis < 35786) {
+                orbitType = 'Medium Earth Orbit (MEO)';
+            } else if (apoapsis >= 160 && apoapsis < 2000 && periapsis >= 160 && periapsis < 2000) {
+                orbitType = 'Low Earth Orbit (LEO)';
+            } else if (apoapsis >= 100 && apoapsis < 160 && periapsis >= 100 && periapsis < 160) {
+                orbitType = 'Very Low Earth Orbit (VLEO)';
+            } else if (apoapsis >= 35786 && periapsis >= 160 && periapsis < 2000) {
+                orbitType = 'Highly Elliptical Orbit (HEO)';
+            } else if (apoapsis < 160) {
+                orbitType = 'Suborbital';
+            } else {
+                orbitType = 'Unknown Orbit';
+            }
+    
+            // Convert period from minutes to days, hours, and minutes
+            const periodMinutes = parseFloat(satellite.PERIOD);
+            const periodDays = Math.floor(periodMinutes / (24 * 60));
+            const periodHours = Math.floor((periodMinutes % (24 * 60)) / 60);
+            const periodMins = Math.floor(periodMinutes % 60);
+            const periodFormatted = 
+                `${periodDays > 0 ? periodDays + ' days ' : ''}${periodHours > 0 ? periodHours + ' hours ' : ''}${periodMins} minutes`;
+    
+            // Add fields to the info panel
+            infoPanel.appendChild(createInfoField('Name and ID', nameAndNorad));
+            infoPanel.appendChild(createInfoField('Object Type', objectType));
+            if(satellite.COUNTRY_CODE){
+                infoPanel.appendChild(createInfoField('Country', `${satellite.COUNTRY_CODE}`));
+            }
+            if(satellite.LAUNCH_DATE){
+                infoPanel.appendChild(createInfoField('Launch Date', formattedLaunchDate));
+            }
+            infoPanel.appendChild(createInfoField('Orbit Type', orbitType));
+            infoPanel.appendChild(createInfoField('Inclination', `${satellite.INCLINATION}°`));
+            infoPanel.appendChild(createInfoField('Apsides', `${apsides}`));
+            infoPanel.appendChild(createInfoField('Orbital Period', periodFormatted));
+            if (satellite.DECAY_DATE) {
+                infoPanel.appendChild(createInfoField('Decay Date', satellite.DECAY_DATE));
+            }
+    
+            // You can continue adding more fields here as needed
+        }
+    }
+    
+    
 
     /**
      * Smoothly transitions the camera to focus on a newly selected satellite.
@@ -365,7 +488,7 @@ const App = (() => {
      * - Simultaneously animating the camera's position and orbit controls' target 
      *   using a GSAP timeline, ensuring both movements happen in sync without jumps.
      */
-    function selectNewSatellite() {
+    function moveCameraToSatellite() {
         if (state.currentlySelected) {
 
             const transitionConfig = {
@@ -440,6 +563,74 @@ const App = (() => {
         }
     }
     
+
+    function recenterCameraToEarth() {
+        const transitionConfig = {
+            distance: 120, // Adjust this to set how far the camera should be from Earth
+            duration: 1.5, // Duration of the transition back to Earth
+            easing: "power2.inOut", // Easing function for a smooth transition
+        };
+    
+        const earthPosition = new THREE.Vector3(0, 0, 0);
+    
+        // Disable controls during animation
+        state.controls.enabled = false;
+    
+        // Store the original camera position and controls target
+        const originalCameraPosition = camera.position.clone();
+        const originalControlsTarget = state.controls.target.clone();
+    
+        // Create objects to animate controls target and camera position
+        const animationTargets = {
+            controlX: originalControlsTarget.x,
+            controlY: originalControlsTarget.y,
+            controlZ: originalControlsTarget.z,
+            camX: originalCameraPosition.x,
+            camY: originalCameraPosition.y,
+            camZ: originalCameraPosition.z,
+        };
+    
+        // New camera position, pulling back from the Earth's center
+        const newCameraPosition = new THREE.Vector3(
+            0,
+            transitionConfig.distance,
+            0
+        );
+    
+        // GSAP timeline for synchronized animations
+        const tl = gsap.timeline({
+            onComplete: () => {
+                // Re-enable controls after the animation
+                state.controls.enabled = true;
+                state.controls.update(); // Ensure the controls are fully updated after animation
+            },
+        });
+    
+        // Animate controls target and camera position back to Earth
+        tl.to(animationTargets, {
+            duration: transitionConfig.duration,
+            controlX: earthPosition.x,
+            controlY: earthPosition.y,
+            controlZ: earthPosition.z,
+            camX: newCameraPosition.x,
+            camY: newCameraPosition.y,
+            camZ: newCameraPosition.z,
+            ease: transitionConfig.easing,
+            onUpdate: () => {
+                state.controls.target.set(
+                    animationTargets.controlX,
+                    animationTargets.controlY,
+                    animationTargets.controlZ
+                );
+                camera.position.set(
+                    animationTargets.camX,
+                    animationTargets.camY,
+                    animationTargets.camZ
+                );
+                camera.lookAt(state.controls.target);
+            },
+        });
+    }
     
 
     function initEventListeners() {
@@ -455,7 +646,20 @@ const App = (() => {
         document.addEventListener('pointerdown', () => {
             if (state.currentlyHovered) {
                 state.currentlySelected = state.currentlyHovered;
-                selectNewSatellite();
+                moveCameraToSatellite();
+            }
+        });
+
+        // Escape key listener to clear selection and recenter camera
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                state.currentlySelected = null; // Clear the selected satellite
+                clearSatelliteInfo(); // Clear the satellite information panel
+                recenterCameraToEarth(); // Recenter the camera to the Earth
+                satNameDiv.style.visibility = 'hidden'; // Hide the label if any
+
+                state.satMaterial.uniforms.selectedIndex.value = -1;
+                state.satMaterial.needsUpdate = true;
             }
         });
     }
@@ -467,13 +671,14 @@ const App = (() => {
         requestAnimationFrame(tick);
 
         // Get latest satellite positions from worker
-        let positions = new Float32Array(state.satPoints.geometry.attributes.position.array);
+        let positions = new Float32Array(state.satPoints.geometry.attributes.position.array); // Causing a memory leak
         worker.postMessage({ type: 'update', epoch: new Date(), buffer: positions.buffer }, [positions.buffer]);
 
         // Raycaster
         let currentlyHovered = raycasterIntersect();
         if (state.currentlySelected){
             displaySelectedLabel();
+            displaySelectedInfo();
         }
         if (currentlyHovered && hoverThreshold(currentlyHovered) ){
             satNameDiv.style.visibility = 'visible'; 
@@ -482,6 +687,8 @@ const App = (() => {
         }
         else if (currentlyHovered === null && !state.currentlySelected) {
             satNameDiv.style.visibility = 'hidden'; 
+            state.currentlyHovered = null;
+
         } 
 
         // Selected satellite
