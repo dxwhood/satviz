@@ -37,6 +37,7 @@ const App = (() => {
         bumpScale: 80,
         texture: textures.day,
         axes: true, //toggle helper axes
+        searchTerm: ''
     }
 
         const satNameDiv = document.createElement('div');
@@ -144,6 +145,8 @@ const App = (() => {
         gui.add(params, 'axes').onChange(function(){
             state.axesHelper.visible = !state.axesHelper.visible;
         })
+        // just add the string search
+        gui.add(params, 'searchTerm');
     }
 
     function initStats() {
@@ -267,6 +270,7 @@ const App = (() => {
         }
     }
 
+
     function hoverThreshold(currentlyHovered, seconds = 0.01) {
         let timeNow = performance.now();
         if (currentlyHovered === null){
@@ -333,6 +337,7 @@ const App = (() => {
         satLabel.element.textContent = `${state.sats[satIndex]['OBJECT_NAME']} [${state.sats[satIndex]['NORAD_CAT_ID']}]`;
         satLabel.position.copy(adjustedPosition);
     }
+
     
     function displaySelectedLabel(){
         // Update selected satellite position
@@ -355,6 +360,7 @@ const App = (() => {
         satLabel.position.copy(adjustedPosition);
     }
 
+
     function clearSatelliteInfo() {
         const infoPanel = document.getElementById('satelliteInfoPanel');
         
@@ -364,6 +370,7 @@ const App = (() => {
         // Optionally hide the panel if you want it to be invisible when no satellite is selected
         infoPanel.style.display = 'none';
     }
+
 
     function displaySelectedInfo() {
         if (state.currentlySelected) {
@@ -479,7 +486,6 @@ const App = (() => {
     }
     
     
-
     /**
      * Smoothly transitions the camera to focus on a newly selected satellite.
      * 
@@ -664,6 +670,59 @@ const App = (() => {
         });
     }
 
+    const filterByName = (name) => (satellite) => {
+        if (!name) {
+            return true; // Return true to include the satellite in the results if name is null or empty
+        }
+        return satellite.OBJECT_NAME.toLowerCase().includes(name.toLowerCase());
+    };
+    
+    const filterByApogee = (minApogee) => (satellite) =>
+        satellite.APOGEE >= minApogee;
+    
+    const filterByPerigee = (minPerigee) => (satellite) =>
+        satellite.PERIGEE >= minPerigee;
+    
+    const filterByCountry = (country) => (satellite) =>
+        satellite.COUNTRY_CODE === country;
+
+    const applyFilters = (satellites, filters) => {
+        return satellites.filter(satellite => filters.every(filter => filter(satellite)));
+    };
+
+
+    function updateSatelliteGeometry(satellites) {
+        const satGeometry = state.satPoints.geometry;
+        const positions = satGeometry.attributes.position.array;
+        const allIndices = new Set([...Array(positions.length / 3).keys()]); // Set of all indices
+        const filteredIndices = new Set(satellites.map(sat => sat.index)); // Set of filtered indices
+    
+        allIndices.forEach(i => {
+            if (!filteredIndices.has(i)) {
+                positions[i * 3] = 0;
+                positions[i * 3 + 1] = 0;
+                positions[i * 3 + 2] = 0;
+            }
+        });
+    
+        // Update the positions of the filtered satellites
+        satellites.forEach((sat) => {
+            const posIdx = sat.index * 3;
+            const positionEcf = sat.position;
+            if (positionEcf && !isNaN(positionEcf.x) && !isNaN(positionEcf.y) && !isNaN(positionEcf.z)) {
+                positions[posIdx] = positionEcf.x 
+                positions[posIdx + 1] = positionEcf.y 
+                positions[posIdx + 2] = positionEcf.z 
+            }
+        });
+    
+        satGeometry.attributes.position.needsUpdate = true;
+        satGeometry.computeBoundingSphere();
+    }
+    
+    
+
+
     // Function for the rendering loop
     function tick() {
         Object.values(stats).forEach(stat => stat.begin()); //Begin stats monitoring
@@ -673,6 +732,11 @@ const App = (() => {
         // Get latest satellite positions from worker
         let positions = new Float32Array(state.satPoints.geometry.attributes.position.array); // Causing a memory leak
         worker.postMessage({ type: 'update', epoch: new Date(), buffer: positions.buffer }, [positions.buffer]);
+
+
+        // Call updateSatelliteGeometry with the filtered satellites
+        const filteredSatellites =  applyFilters(sats, [filterByName(params.searchTerm)]);
+        updateSatelliteGeometry(filteredSatellites);
 
         // Raycaster
         let currentlyHovered = raycasterIntersect();
@@ -688,7 +752,6 @@ const App = (() => {
         else if (currentlyHovered === null && !state.currentlySelected) {
             satNameDiv.style.visibility = 'hidden'; 
             state.currentlyHovered = null;
-
         } 
 
         // Selected satellite
