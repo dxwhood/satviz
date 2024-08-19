@@ -110,10 +110,10 @@ const App = (() => {
         const ambientLight = new THREE.AmbientLight(0x404040, 20); // Soft white light
         scene.add(ambientLight); 
 
-        // Axes helper
-        const axesHelper = new THREE.AxesHelper(1000);
-        state.axesHelper = axesHelper; // Add to state
-        scene.add(axesHelper);
+        // Axes helper TODO: Add flag to toggle visibility
+        // const axesHelper = new THREE.AxesHelper(1000);
+        // state.axesHelper = axesHelper; // Add to state
+        // scene.add(axesHelper);
 
         // Load textures
         loadTextures();
@@ -123,7 +123,7 @@ const App = (() => {
         const globeMaterial = new THREE.MeshPhongMaterial({
             map: textures.day, //default texture: day
             bumpMap: textures.bump,
-            bumpScale: 80
+            bumpScale: 40
         });
 
         const globe = new THREE.Mesh(globeGeometry, globeMaterial);
@@ -139,33 +139,48 @@ const App = (() => {
         gui.add(params, 'texture', {day: textures.day, night: textures.night, 'day and night': textures.day}).onChange(value => {
             state.globe.material.map = value;
             state.globe.material.needsUpdate = true;}); // TODO: add day & night real-ish time
-        gui.add(params, 'bumpScale', 0, 200).onChange(value => {
-            state.globe.material.bumpScale = value;
-            state.globe.material.needsUpdate = true;});
-        gui.add(params, 'axes').onChange(function(){
-            state.axesHelper.visible = !state.axesHelper.visible;
-        })
+        // gui.add(params, 'bumpScale', 0, 200).onChange(value => {
+        //     state.globe.material.bumpScale = value;
+        //     state.globe.material.needsUpdate = true;});
+        // gui.add(params, 'axes').onChange(function(){
+        //     state.axesHelper.visible = !state.axesHelper.visible;
+        // })
         // just add the string search
         gui.add(params, 'searchTerm');
     }
 
-    function initStats() {
-        const statsFPS = new Stats();
-        statsFPS.showPanel(0); // Panel 0 = fps
-        statsFPS.domElement.style.cssText = 'position:absolute;top:0px;left:0px;';
-        document.body.appendChild(statsFPS.domElement);
+    function initStats(fps=true, ms=true, mb=true) {
+        if (!fps && !ms && !mb) return null;
+        let return_obj = {fps: null, ms: null, mb: null};
 
-        const statsMS = new Stats();
-        statsMS.showPanel(1); // Panel 1 = ms
-        statsMS.domElement.style.cssText = 'position:absolute;top:0px;left:80px;';
-        document.body.appendChild(statsMS.domElement);
+        if(fps){
+            const statsFPS = new Stats();
+            statsFPS.showPanel(0); // Panel 0 = fps
+            statsFPS.domElement.style.cssText = 'position:absolute;top:0px;left:0px;';
+            document.body.appendChild(statsFPS.domElement);
+            return_obj.fps = statsFPS;
+        }
 
-        const statsMB = new Stats();
-        statsMB.showPanel(2); // Panel 2 = mb
-        statsMB.domElement.style.cssText = 'position:absolute;top:0px;left:160px;';
-        document.body.appendChild(statsMB.domElement);
+        if(ms){
+            const statsMS = new Stats();
+            statsMS.showPanel(1); // Panel 1 = ms
+            statsMS.domElement.style.cssText = 'position:absolute;top:0px;left:80px;';
+            document.body.appendChild(statsMS.domElement);
+            return_obj.ms = statsMS;
+        }
+   
 
-        return { fps: statsFPS, ms: statsMS, mb: statsMB };
+        if(mb){
+            const statsMB = new Stats();
+            statsMB.showPanel(2); // Panel 2 = mb
+            statsMB.domElement.style.cssText = 'position:absolute;top:0px;left:160px;';
+            document.body.appendChild(statsMB.domElement);
+            return_obj.mb = statsMB;
+        }
+
+     
+
+        return return_obj;
     }
 
 
@@ -725,7 +740,13 @@ const App = (() => {
 
     // Function for the rendering loop
     function tick() {
-        Object.values(stats).forEach(stat => stat.begin()); //Begin stats monitoring
+        //Object.values(stats).forEach(stat => stat.begin()); //Begin stats monitoring
+        // change to for each stat that isnt null:
+        Object.values(stats).forEach(stat => {
+            if (stat !== null){
+                stat.begin();
+            }
+        })
 
         requestAnimationFrame(tick);
 
@@ -768,7 +789,11 @@ const App = (() => {
         cameraPosition.innerHTML = `Camera Position: ${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)}`;
 
 
-        Object.values(stats).forEach(stat => stat.end()); //End stats monitoring
+        Object.values(stats).forEach(stat => {
+            if (stat !== null){
+                stat.end();
+            }
+        }) //End stats monitoring
     }
 
 
@@ -780,7 +805,7 @@ const App = (() => {
             initScene();
             initRaycaster();
             initGUI();
-            stats = initStats();
+            stats = initStats(true, false, false);
             initEventListeners();
             initSatellites().then(() => {
                 tick(); // Start the render loop once everything is initialized
