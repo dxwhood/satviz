@@ -3,10 +3,20 @@ import json
 import os
 from src.backend.utils import json_utils
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 
 
 app = Flask(__name__, static_folder='../../frontend/static', static_url_path='/static')
-CORS(app)  # Enable CORS for your Flask app
+CORS(app)  # Enable CORS for the Flask app 
+
+# Set up a global Limiter so you don't get wrecked by AWS bills
+limiter = Limiter(
+    key_func=lambda: "global",  # Use a static key to apply the same limit for all requests
+    app=app,
+    default_limits=["100 per hour"]  # Limit to 100 requests total per hour
+)
 
 @app.after_request
 def add_coep_headers(response):
